@@ -1,8 +1,29 @@
+/*
+ * Copyright 2025 DatalabHell
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 export const testIds = {
   appConfig: {
-    apiKey: 'data-testid ac-api-key',
-    apiUrl: 'data-testid ac-api-url',
+    panelsPerPage: 'data-testid ac-panels-per-page',
+    panelSpacing: 'data-testid ac-panel-spacing',
+    orientation: 'data-testid ac-orientation',
     submit: 'data-testid ac-submit-form',
+    footerLogo: 'data-testid ac-footer-logo',
+    pageNumbers: 'data-testid ac-page-numbers',
+    logoEnabled: 'data-testid ac-logo-enabled',
+    panelTitles: 'data-testid ac-panel-titles',
   },
   pageOne: {
     container: 'data-testid pg-one-container',

@@ -4,54 +4,45 @@
   "name": "Grafana-Reporter",
   "id": "datalabhell-grafanareporter-app",
   "info": {
-    "keywords": ["app"],
-    "description": "",
+    "keywords": [
+      "app"
+    ],
+    "description": "Render Grafana dashboards to PDF directly in the browser using the grafana-image-renderer, implemented as a pure front-end plugin.",
     "author": {
-      "name": "Data lab hell"
+      "name": "Daniel Baldauf"
     },
+    "links": [
+      {
+        "name": "Source Code",
+        "url": "https://github.com/datalabhell/grafanareporter-app"
+      },
+      {
+        "name": "License",
+        "url": "https://github.com/datalabhell/grafanareporter-app/blob/main/LICENSE"
+      }
+    ],
     "logos": {
       "small": "img/logo.svg",
       "large": "img/logo.svg"
     },
-    "screenshots": [],
+    "screenshots": [
+      {
+        "name": "Configuration",
+        "path": "img/configuration.png"
+      },
+      {
+        "name": "Reporter App",
+        "path": "img/reporter.png"
+      }
+    ],
     "version": "%VERSION%",
     "updated": "%TODAY%"
   },
   "includes": [
     {
       "type": "page",
-      "name": "Page One",
-      "path": "/a/%PLUGIN_ID%/one",
-      "addToNav": true,
-      "defaultNav": true
-    },
-    {
-      "type": "page",
-      "name": "Page Two",
-      "path": "/a/%PLUGIN_ID%/two",
-      "addToNav": true,
-      "defaultNav": false
-    },
-    {
-      "type": "page",
-      "name": "Page Three",
-      "path": "/a/%PLUGIN_ID%/three",
-      "addToNav": true,
-      "defaultNav": false
-    },
-    {
-      "type": "page",
-      "name": "Page Four",
-      "path": "/a/%PLUGIN_ID%/four",
-      "addToNav": true,
-      "defaultNav": false
-    },
-    {
-      "type": "page",
-      "icon": "cog",
-      "name": "Configuration",
-      "path": "/plugins/%PLUGIN_ID%",
-      "role": "Admin",
+      "name": "Grafana Reporter",
+      "path": "/a/%PLUGIN_ID%",
       "addToNav": true
     }
   ],

@@ -1,50 +1,97 @@
-<!-- This README file is going to be the one displayed on the Grafana.com website for your plugin. Uncomment and replace the content here before publishing.
+# Grafana Reporter Technical Guide
 
-Remove any remaining comments before publishing as these may be displayed on Grafana.com -->
-
-# Grafana-Reporter
-
-<!-- To help maximize the impact of your README and improve usability for users, we propose the following loose structure:
-
-**BEFORE YOU BEGIN**
-- Ensure all links are absolute URLs so that they will work when the README is displayed within Grafana and Grafana.com
-- Be inspired ✨
-  - [grafana-polystat-panel](https://github.com/grafana/grafana-polystat-panel)
-  - [volkovlabs-variable-panel](https://github.com/volkovlabs/volkovlabs-variable-panel)
-
-**ADD SOME BADGES**
-
-Badges convey useful information at a glance for users whether in the Catalog or viewing the source code. You can use the generator on [Shields.io](https://shields.io/badges/dynamic-json-badge) together with the Grafana.com API
-to create dynamic badges that update automatically when you publish a new version to the marketplace.
-
-- For the URL parameter use `https://grafana.com/api/plugins/your-plugin-id`.
-- Example queries:
-  - Downloads: `$.downloads`
-  - Catalog Version: `$.version`
-  - Grafana Dependency: `$.grafanaDependency`
-  - Signature Type: `$.versionSignatureType`
-- Optionally, for the logo parameter use `grafana`.
-
-Full example: ![Dynamic JSON Badge](https://img.shields.io/badge/dynamic/json?logo=grafana&query=$.version&url=https://grafana.com/api/plugins/grafana-polystat-panel&label=Marketplace&prefix=v&color=F47A20)
-
-Consider other [badges](https://shields.io/badges) as you feel appropriate for your project.
-
-## Overview / Introduction
-Provide one or more paragraphs as an introduction to your plugin to help users understand why they should use it.
-
-Consider including screenshots:
-- in [plugin.json](https://grafana.com/developers/plugin-tools/reference/plugin-json#info) include them as relative links.
-- in the README ensure they are absolute URLs.
+This document captures setup, provisioning, and runtime options for the Grafana Reporter plugin. For background, status and motivation see the repository-level `README.md`.
 
 ## Requirements
-List any requirements or dependencies they may need to run the plugin.
 
-## Getting Started
-Provide a quick start on how to configure and use the plugin.
+- Grafana 10.4+ (tested through 12.3.0).
+- Access to the dashboards you want to export.
+- Grafana rendering (`/render`) reachable from the browser. For best results deploy [grafana-image-renderer](https://github.com/grafana/grafana-image-renderer) alongside Grafana and configure:
+  - `GF_RENDERING_SERVER_URL=http://grafana-renderer:8081/render`
+  - `GF_RENDERING_CALLBACK_URL=http://grafana:3000/`
+- Allow unsigned plugins (`GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS=datalabhell-grafanareporter-app`) unless you sign the plugin yourself.
 
-## Documentation
-If your project has dedicated documentation available for users, provide links here. For help in following Grafana's style recommendations for technical documentation, refer to our [Writer's Toolkit](https://grafana.com/docs/writers-toolkit/).
+## Usage
 
-## Contributing
-Do you want folks to contribute to the plugin or provide feedback through specific means? If so, tell them how!
--->
+### Dashboard link
+
+1. Open any dashboard and go to **Settings → Links → New link**.
+2. Set the URL to `/a/datalabhell-grafanareporter-app?uid=${__dashboard.uid}`. Add the `link` type, set `title`, `icon`(e.g. `doc`) and include any options you want to pass to the reporter directly (current time range, variables values).
+3. Save the dashboard. Clicking the link opens the reporter app with the current selections prefilled and triggers the report automatically because `uid` is present. Rhe resulting PDF downloads immediately.
+
+### Report Runner page
+
+1. Navigate to `/a/datalabhell-grafanareporter-app` (More apps → Grafana Reporter).
+2. Choose a dashboard (or link there with `?uid=<dashboardUid>`) and press **Generate report**.
+3. Expand **Advanced settings** to adjust timerange, timezone, theme, variables, and the global overrides for layout.
+4. The live "Report URL" shows the exact link you can bookmark or share, it updates every time you change an option.
+
+### Auto-run via URL
+
+Pass the `uid` parameter to run immediately when the page loads. Everything else is optional. If omitted, the plugin uses the global defaults.
+
+```
+/a/datalabhell-grafanareporter-app?uid=abcd1234&from=now-6h&to=now&var-region=us&panelsPerPage=4
+```
+
+## Query parameters
+
+| Parameter       | Description                                           | Example                       |
+| --------------- | ----------------------------------------------------- | ----------------------------- |
+| `uid`           | Dashboard UID (required for auto-run).                | `uid=abcd1234`                |
+| `from`, `to`    | Time range (`now-6h`, epoch ms, ISO strings).         | `from=now-24h&to=now`         |
+| `tz`            | Timezone (`browser`, `utc`, `Europe/Vienna`).         | `tz=browser`                  |
+| `theme`         | `dark` or `light`. Defaults to user preference.       | `theme=light`                 |
+| `orientation`   | `portrait` or `landscape`.                            | `orientation=landscape`       |
+| `panelsPerPage` | Positive integer controlling the grid.                | `panelsPerPage=4`             |
+| `panelSpacing`  | Non-negative integer (points).                        | `panelSpacing=16`             |
+| `logo`          | `true`/`false`. Toggle logo.                          | `logo=false`                  |
+| `logoPlacement` | `header` or `footer`. Where the logo renders.         | `logoPlacement=header`        |
+| `logoAlignment` | `left`/`center`/`right`. Logo horizontal alignment.   | `logoAlignment=center`        |
+| `panelTitles`   | `true`/`false`. Show panel titles above screenshots.  | `panelTitles=false`           |
+| `pageNumbers`   | `true`/`false`. Show "Page X of Y".                   | `pageNumbers=true`            |
+| `pagePlacement` | `header` or `footer`. Where "Page X of Y" renders.    | `pagePlacement=footer`        |
+| `pageAlignment` | `left`/`center`/`right`. Alignment for "Page X of Y". | `pageAlignment=right`         |
+| `var-<name>`    | Repeat for every dashboard variable value.            | `var-region=us&var-region=eu` |
+
+## Configuration
+
+The plugin configuration page (Administration → Plugins → Grafana Reporter or the cog icon in the app header) stores global defaults:
+
+- Panels per page / spacing / orientation.
+- Logo image + toggle + placement/alignment (header or footer).
+- Panel titles toggle.
+- Page numbers toggle + placement/alignment (header or footer).
+
+These defaults are applied everywhere unless overridden via the advanced settings UI or query parameters.
+
+To preseed defaults in provisioning, add a file under `/etc/grafana/provisioning/plugins/`. Host logo assets inside the plugin (for example under `/public/plugins/datalabhell-grafanareporter-app/img/`) so they’re served from the same origin and can be embedded in PDFs without CORS issues:
+
+```yaml
+apiVersion: 1
+
+apps:
+  - type: datalabhell-grafanareporter-app
+    org_id: 1
+    org_name: Main Org.
+    disabled: false
+    jsonData:
+      layout:
+        panelsPerPage: 2
+        panelSpacing: 16
+        orientation: 'portrait'
+        logoUrl: '/public/plugins/datalabhell-grafanareporter-app/img/dlh-logo.svg'
+        logoEnabled: true
+        logoPlacement: 'footer'
+        logoAlignment: 'left'
+        showPanelTitles: true
+        showPageNumbers: true
+        pageNumberPlacement: 'footer'
+        pageNumberAlignment: 'right'
+```
+
+Grafana writes that `jsonData` into the plugin settings, so users see those defaults immediately.
+
+## Support & feedback
+
+Issues and feature requests are welcome via the project repository. Contributions (bug fixes, docs, or new layout features) are gladly reviewed. Open a pull request or start a discussion describing the use case.

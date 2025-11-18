@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-import { test, expect } from './fixtures';
-import { ROUTES } from '../src/constants';
+import { ReporterPluginSettings } from '../types/reporting';
 
-test.describe('navigating app', () => {
-  test('report page should render successfully', async ({ gotoPage, page }) => {
-    await gotoPage(`/${ROUTES.Report}`);
-    await expect(page.getByRole('heading', { name: /dashboard report/i })).toBeVisible();
-  });
-});
+let currentSettings: ReporterPluginSettings | undefined;
+
+export const setReporterSettings = (settings?: ReporterPluginSettings) => {
+  currentSettings = settings;
+};
+
+export const getReporterSettings = () => currentSettings;
