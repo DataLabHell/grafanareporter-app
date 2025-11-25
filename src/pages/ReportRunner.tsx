@@ -23,7 +23,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom';
 import { PLUGIN_BASE_URL, ROUTES } from '../constants';
 import pluginJson from '../plugin.json';
-import { getReporterSettings, setReporterSettings } from '../state/pluginSettings';
+import { ensureReporterSettings, getReporterSettings, setReporterSettings } from '../state/pluginSettings';
 import {
   BrandingAlignment,
   BrandingPlacement,
@@ -68,19 +68,19 @@ interface ReportRunnerProps {
 }
 
 const ReportRunner = ({ settings }: ReportRunnerProps) => {
-  const initialSettings = settings ?? getReporterSettings();
-  const [pluginSettingsState, setPluginSettingsState] = useState<ReporterPluginSettings | undefined>(initialSettings);
+  const initialSettings = ensureReporterSettings(settings ?? getReporterSettings());
+  const [pluginSettingsState, setPluginSettingsState] = useState<ReporterPluginSettings>(initialSettings);
+  const [settingsReady, setSettingsReady] = useState<boolean>(Boolean(settings && Object.keys(settings).length));
 
   useEffect(() => {
-    const next = settings ?? getReporterSettings();
+    const next = ensureReporterSettings(settings ?? getReporterSettings());
     setPluginSettingsState(next);
-    if (next) {
-      setReporterSettings(next);
-    }
+    setReporterSettings(next);
+    setSettingsReady(Boolean(settings && Object.keys(settings).length));
   }, [settings]);
 
   useEffect(() => {
-    if (pluginSettingsState) {
+    if (settings && Object.keys(settings).length) {
       return;
     }
 
@@ -92,11 +92,16 @@ const ReportRunner = ({ settings }: ReportRunnerProps) => {
           `/api/plugins/${pluginJson.id}/settings`
         );
         if (!cancelled) {
-          setPluginSettingsState(response?.jsonData);
-          setReporterSettings(response?.jsonData);
+          const normalized = ensureReporterSettings(response?.jsonData);
+          setPluginSettingsState(normalized);
+          setReporterSettings(normalized);
+          setSettingsReady(true);
         }
       } catch (error) {
         console.warn('Failed to load reporter settings', error);
+        if (!cancelled) {
+          setSettingsReady(true);
+        }
       }
     };
 
@@ -105,7 +110,7 @@ const ReportRunner = ({ settings }: ReportRunnerProps) => {
     return () => {
       cancelled = true;
     };
-  }, [pluginSettingsState]);
+  }, [settings]);
 
   const layoutDefaults = useMemo(() => resolveLayoutSettings(pluginSettingsState?.layout), [pluginSettingsState]);
   const location = useLocation();
@@ -127,6 +132,7 @@ const ReportRunner = ({ settings }: ReportRunnerProps) => {
     layout: layoutDefaults,
   });
   const [hasLayoutOverride, setHasLayoutOverride] = useState(false);
+  const lastAppliedQueryRef = useRef<string>('');
 
   useEffect(() => {
     if (!hasLayoutOverride) {
@@ -231,10 +237,24 @@ const ReportRunner = ({ settings }: ReportRunnerProps) => {
   );
 
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
+    if (!settingsReady || !pluginSettingsState) {
+      return;
+    }
+
+    const currentQuery = location.search ?? '';
+    if (!currentQuery) {
+      lastAppliedQueryRef.current = '';
+      return;
+    }
+
+    if (currentQuery === lastAppliedQueryRef.current) {
+      return;
+    }
+
+    const params = new URLSearchParams(currentQuery);
     const dashboardUid = params.get('uid') ?? undefined;
 
-    if (!dashboardUid || !pluginSettingsState) {
+    if (!dashboardUid) {
       return;
     }
 
@@ -291,7 +311,8 @@ const ReportRunner = ({ settings }: ReportRunnerProps) => {
     });
 
     runReport(normalizedContext, theme ?? userThemePreference);
-  }, [location.search, layoutDefaults, pluginSettingsState, runReport]);
+    lastAppliedQueryRef.current = currentQuery;
+  }, [location.search, layoutDefaults, pluginSettingsState, runReport, settingsReady]);
 
   const dashboardsOptions = useMemo<Array<ComboboxOption<string>>>(
     () =>
@@ -450,6 +471,7 @@ const ReportRunner = ({ settings }: ReportRunnerProps) => {
       },
       advancedSettings.theme || undefined
     );
+    lastAppliedQueryRef.current = currentQuery;
   };
 
   const cancelReportGeneration = () => {

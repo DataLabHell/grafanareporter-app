@@ -17,6 +17,7 @@
 import { __testables } from './reportGenerator';
 import { DEFAULT_LAYOUT_SETTINGS, resolveLayoutSettings, LayoutSettings } from '../types/reporting';
 import { PanelModel } from '../types/grafana';
+import { panelsGrafana121, panelsGrafana123 } from './__fixtures__/dashboardPanels';
 
 describe('reportGenerator helpers', () => {
   describe('flattenPanels', () => {
@@ -128,6 +129,29 @@ describe('reportGenerator helpers', () => {
 
       expect(logoHeight).toBeGreaterThan(0);
       expect(footerHeight).toBe(0);
+    });
+  });
+
+  describe('real Grafana panel payloads', () => {
+    const variableMap = { iterator: ['1', '2'] };
+
+    const assertPanelPayload = (panels: PanelModel[]) => {
+      const grouped = __testables.groupPanelsByRows(panels);
+      const flattened = __testables.flattenPanels(grouped, variableMap);
+
+      const repeated = flattened.filter((panel) => panel.title?.includes('Iterator'));
+      expect(repeated).toHaveLength(variableMap.iterator.length);
+      expect(new Set(repeated.map((panel) => panel.renderId)).size).toBe(variableMap.iterator.length);
+      expect(repeated.every((panel) => String(panel.renderId).includes('clone'))).toBe(true);
+      expect(repeated.map((panel) => panel.scopedVars?.iterator?.value)).toEqual(variableMap.iterator);
+    };
+
+    it('flattens Grafana 12.1 style panels with sequential rows', () => {
+      assertPanelPayload(panelsGrafana121);
+    });
+
+    it('flattens Grafana 12.3 style panels that rely on rowPanelId', () => {
+      assertPanelPayload(panelsGrafana123);
     });
   });
 });

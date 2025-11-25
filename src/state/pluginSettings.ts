@@ -14,12 +14,27 @@
  * limitations under the License.
  */
 
-import { ReporterPluginSettings } from '../types/reporting';
+import { DEFAULT_LAYOUT_SETTINGS, ReporterPluginSettings } from '../types/reporting';
 
 let currentSettings: ReporterPluginSettings | undefined;
 
-export const setReporterSettings = (settings?: ReporterPluginSettings) => {
-  currentSettings = settings;
+const cloneDefaultLayout = () => ({ ...DEFAULT_LAYOUT_SETTINGS });
+
+export const ensureReporterSettings = (settings?: ReporterPluginSettings | null): ReporterPluginSettings => {
+  if (settings && Object.keys(settings).length > 0) {
+    return {
+      ...settings,
+      layout: settings.layout ?? cloneDefaultLayout(),
+    };
+  }
+
+  return {
+    layout: cloneDefaultLayout(),
+  };
 };
 
-export const getReporterSettings = () => currentSettings;
+export const setReporterSettings = (settings?: ReporterPluginSettings | null) => {
+  currentSettings = ensureReporterSettings(settings);
+};
+
+export const getReporterSettings = () => currentSettings ?? ensureReporterSettings(undefined);
