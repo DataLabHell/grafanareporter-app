@@ -131,11 +131,11 @@ export const generateDashboardReport = async ({
       continue;
     }
 
-    const resolvedPanelTitle = getPanelTitle(panel, templateSrv);
-    notify(`Rendering panel ${index + 1}/${panels.length}: ${resolvedPanelTitle}`);
-
     const scopedVariableOverrides = getScopedVariableOverrides(panel.scopedVars);
     const panelVariableValues = mergeVariableValues(mergedVariableValues, scopedVariableOverrides);
+    const panelTitleScopedVars = mergeScopedVars(buildScopedVarsFromValueMap(panelVariableValues), panel.scopedVars);
+    const resolvedPanelTitle = getPanelTitle(panel, templateSrv, panelTitleScopedVars);
+    notify(`Rendering panel ${index + 1}/${panels.length}: ${resolvedPanelTitle}`);
     const panelVariablePairs = buildVariablePairs(panelVariableValues);
     const panelRenderId = getPanelRenderId(panel);
     if (!panelRenderId) {
@@ -601,6 +601,29 @@ const buildVariablePairs = (values: VariableValueMap): Array<{ key: string; valu
     )
     .flat();
 
+const buildScopedVarsFromValueMap = (values?: VariableValueMap): ScopedVars | undefined => {
+  if (!values || !Object.keys(values).length) {
+    return undefined;
+  }
+
+  const scoped: ScopedVars = {};
+  let hasEntries = false;
+
+  for (const [name, variableValues] of Object.entries(values)) {
+    if (!variableValues?.length) {
+      continue;
+    }
+    const value = variableValues.length === 1 ? variableValues[0] : variableValues;
+    scoped[name] = {
+      value,
+      text: Array.isArray(value) ? variableValues.join(', ') : value,
+    };
+    hasEntries = true;
+  }
+
+  return hasEntries ? scoped : undefined;
+};
+
 const normalizeVariableValues = (value: any): string[] => {
   const raw = Array.isArray(value) ? value : [value];
   const normalized: string[] = [];
@@ -740,12 +763,16 @@ const fitRectangle = (maxWidth: number, maxHeight: number, originalWidth: number
   return { width, height };
 };
 
-const getPanelTitle = (panel: PanelModel, templateSrv: ReturnType<typeof getTemplateSrv>) => {
+const getPanelTitle = (
+  panel: PanelModel,
+  templateSrv: ReturnType<typeof getTemplateSrv>,
+  scopedContext?: ScopedVars
+) => {
   const fallbackTitle = `Panel ${panel.id ?? ''}`.trim() || 'Panel';
   const baseTitle = panel.title ?? fallbackTitle;
 
   try {
-    const replaced = templateSrv.replace(baseTitle, panel.scopedVars);
+    const replaced = templateSrv.replace(baseTitle, scopedContext ?? panel.scopedVars);
     return replaced?.trim() || baseTitle;
   } catch {
     return baseTitle;
