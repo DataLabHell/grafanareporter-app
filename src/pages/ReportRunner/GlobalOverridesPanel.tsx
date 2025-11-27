@@ -177,6 +177,15 @@ export const GlobalOverridesPanel = ({ isOpen, onToggle, layout, onLayoutChange 
           <Field label="Panel titles">
             <Switch value={layout.showPanelTitles} onChange={handleLayoutToggle('showPanelTitles')} />
           </Field>
+          <Field label="Panel title font size (pt)">
+            <Input
+              type="number"
+              min={1}
+              step={1}
+              value={layout.panelTitleFontSize}
+              onChange={handleNumericChange('panelTitleFontSize', { min: 1 })}
+            />
+          </Field>
 
           <Field label="Page numbers">
             <Switch value={layout.showPageNumbers} onChange={handleLayoutToggle('showPageNumbers')} />

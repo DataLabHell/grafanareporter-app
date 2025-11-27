@@ -20,18 +20,17 @@ import { TimeZone } from '@grafana/schema';
 import { config, getBackendSrv, getTemplateSrv, locationService } from '@grafana/runtime';
 import { jsPDF, TextOptionsLight } from 'jspdf';
 import { lastValueFrom } from 'rxjs';
+import { DashboardApiResponse, DashboardModel, PanelModel } from '../types/grafana';
 import {
   BrandingAlignment,
   BrandingPlacement,
-  DEFAULT_LAYOUT_SETTINGS,
   LayoutSettings,
   ReporterPluginSettings,
   ReportTheme,
+  resolveLayoutSettings,
   VariableValue,
   VariableValueMap,
-  resolveLayoutSettings,
 } from '../types/reporting';
-import { DashboardApiResponse, DashboardModel, PanelModel } from '../types/grafana';
 
 type ProgressHandler = (message: string) => void;
 
@@ -208,8 +207,9 @@ export const generateDashboardReport = async ({
   const gridRows = Math.max(1, Math.ceil(panelsPerPage / gridColumns));
   const totalPages = Math.max(1, Math.ceil(panelImages.length / panelsPerPage));
   const showPanelTitles = layoutConfig.showPanelTitles;
-  const titleOffset = showPanelTitles ? 14 : 0;
-  const contentOffset = showPanelTitles ? titleOffset + 4 : 0;
+  const panelTitleFontSize = layoutConfig.panelTitleFontSize;
+  const titleOffset = showPanelTitles ? panelTitleFontSize : 0;
+  const contentOffset = showPanelTitles ? panelTitleFontSize + 4 : 0;
 
   // Walk through the rendered panels in chunks of `panelsPerPage`, laying them out on each PDF page.
   for (let pageIndex = 0; pageIndex < panelImages.length; pageIndex += panelsPerPage) {
@@ -242,7 +242,7 @@ export const generateDashboardReport = async ({
       const imageY = yOffset + contentOffset + (contentHeight - imageHeight) / 2;
 
       if (showPanelTitles) {
-        pdf.setFontSize(14);
+        pdf.setFontSize(panelTitleFontSize);
         pdf.text(image.title, xOffset, yOffset + titleOffset);
       }
       pdf.addImage(image.dataUrl, 'PNG', imageX, imageY, imageWidth, imageHeight);
@@ -738,17 +738,8 @@ const buildScopedVarOverride = (name: string, entry: VariableValue): ScopedVars 
 
 const resolveReportLayout = (base?: LayoutSettings, override?: LayoutSettings) =>
   resolveLayoutSettings({
-    orientation: override?.orientation ?? base?.orientation,
-    panelsPerPage: override?.panelsPerPage ?? base?.panelsPerPage ?? DEFAULT_LAYOUT_SETTINGS.panelsPerPage,
-    panelSpacing: override?.panelSpacing ?? base?.panelSpacing ?? DEFAULT_LAYOUT_SETTINGS.panelSpacing,
-    logoUrl: override?.logoUrl ?? base?.logoUrl,
-    logoEnabled: override?.logoEnabled ?? base?.logoEnabled,
-    showPageNumbers: override?.showPageNumbers ?? base?.showPageNumbers,
-    showPanelTitles: override?.showPanelTitles ?? base?.showPanelTitles,
-    logoPlacement: override?.logoPlacement ?? base?.logoPlacement,
-    logoAlignment: override?.logoAlignment ?? base?.logoAlignment,
-    pageNumberPlacement: override?.pageNumberPlacement ?? base?.pageNumberPlacement,
-    pageNumberAlignment: override?.pageNumberAlignment ?? base?.pageNumberAlignment,
+    ...base,
+    ...override,
   });
 
 const determineGridColumns = (slotsPerPage: number) => {
