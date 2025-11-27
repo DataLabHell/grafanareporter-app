@@ -23,6 +23,13 @@ export type ReportOrientation = 'portrait' | 'landscape';
 export type BrandingPlacement = 'header' | 'footer';
 export type BrandingAlignment = 'left' | 'center' | 'right';
 
+export interface VariableValue {
+  value: string;
+  text?: string;
+}
+
+export type VariableValueMap = Record<string, VariableValue[]>;
+
 export interface LayoutSettings {
   orientation?: ReportOrientation;
   panelsPerPage?: number;

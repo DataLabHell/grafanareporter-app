@@ -30,6 +30,7 @@ import {
   LayoutSettings,
   ReportTheme,
   ReporterPluginSettings,
+  VariableValueMap,
   resolveLayoutSettings,
 } from '../types/reporting';
 import { DashboardTemplateVariable, DashboardModel } from '../types/grafana';
@@ -52,7 +53,7 @@ interface ManualRunContext {
   dashboardTitle?: string;
   timeRange?: RawTimeRange;
   timeZone?: TimeZone | 'browser';
-  variables?: Record<string, string[]>;
+  variables?: VariableValueMap;
   layout?: LayoutSettings;
 }
 
@@ -266,16 +267,17 @@ const ReportRunner = ({ settings }: ReportRunnerProps) => {
     const theme = themeParam && (themeParam === 'light' || themeParam === 'dark') ? themeParam : undefined;
     const layoutOverride = parseLayoutOverrides(params);
 
-    const manualVariables: Record<string, string[]> = {};
+    const manualVariables: VariableValueMap = {};
     params.forEach((value, key) => {
       if (key.startsWith('var-')) {
         const variableName = key.slice(4);
         if (!variableName) {
           return;
         }
+        const entry = { value, text: value };
         manualVariables[variableName] = manualVariables[variableName]
-          ? [...manualVariables[variableName], value]
-          : [value];
+          ? [...manualVariables[variableName], entry]
+          : [entry];
       }
     });
 
@@ -645,8 +647,8 @@ const coerceRawRange = (range?: RawTimeRange | { from?: string; to?: string }): 
   to: normalizeRawTimeInput(range?.to, DEFAULT_TIME_RANGE.to),
 });
 
-const parseVariablesText = (text: string): Record<string, string[]> | undefined => {
-  const result: Record<string, string[]> = {};
+const parseVariablesText = (text: string): VariableValueMap | undefined => {
+  const result: VariableValueMap = {};
   text
     .split(/\n+/)
     .map((line) => line.trim())
@@ -662,38 +664,38 @@ const parseVariablesText = (text: string): Record<string, string[]> | undefined 
         .map((value) => value.trim())
         .filter(Boolean);
       if (values.length) {
-        result[variable] = values;
+        result[variable] = values.map((value) => ({ value, text: value }));
       }
     });
 
   return Object.keys(result).length ? result : undefined;
 };
 
-const formatVariablesText = (variables?: Record<string, string[]>) => {
+const formatVariablesText = (variables?: VariableValueMap) => {
   if (!variables) {
     return '';
   }
 
   return Object.entries(variables)
-    .map(([name, values]) => `${name}=${values.join(',')}`)
+    .map(([name, entries]) => `${name}=${entries.map((entry) => entry.text ?? entry.value).join(',')}`)
     .join('\n');
 };
 
 const convertDashboardVariablesToMap = (
   variables?: DashboardTemplateVariable[]
-): Record<string, string[]> | undefined => {
+): VariableValueMap | undefined => {
   if (!variables?.length) {
     return undefined;
   }
 
-  const map: Record<string, string[]> = {};
+  const map: VariableValueMap = {};
 
   variables.forEach((variable) => {
     if (!variable?.name) {
       return;
     }
 
-    const values = normalizeDashboardVariableValues(variable.current?.value ?? variable.current?.text);
+    const values = normalizeDashboardVariableValues(variable.current?.value, variable.current?.text);
     if (values.length) {
       map[variable.name] = values;
     }
@@ -702,29 +704,55 @@ const convertDashboardVariablesToMap = (
   return Object.keys(map).length ? map : undefined;
 };
 
-const normalizeDashboardVariableValues = (value: unknown): string[] => {
-  const raw = Array.isArray(value) ? value : [value];
-  const normalized: string[] = [];
+const normalizeDashboardVariableValues = (value: unknown, text?: unknown): VariableValueMap[keyof VariableValueMap] => {
+  const valueArray = Array.isArray(value) ? value : value !== undefined ? [value] : [];
+  const textArray = Array.isArray(text) ? text : text !== undefined ? [text] : [];
+  const max = Math.max(valueArray.length, textArray.length);
+  const normalized: VariableValueMap[keyof VariableValueMap] = [];
 
-  raw.forEach((item) => {
-    if (item === undefined || item === null || item === '') {
-      return;
+  for (let i = 0; i < max; i++) {
+    let source = valueArray[i];
+    const textCandidate = textArray[i];
+
+    if (source === undefined) {
+      source = textCandidate;
     }
 
-    if (typeof item === 'object') {
-      const candidate = item as { value?: unknown; text?: unknown };
-      if ('value' in candidate && candidate.value !== undefined && candidate.value !== null && candidate.value !== '') {
-        normalized.push(String(candidate.value));
-        return;
+    if (source === undefined || source === null || source === '') {
+      continue;
+    }
+
+    if (typeof source === 'object') {
+      const candidate = source as { value?: unknown; text?: unknown };
+      if (candidate.value !== undefined && candidate.value !== null && candidate.value !== '') {
+        normalized.push({
+          value: String(candidate.value),
+          text:
+            candidate.text !== undefined && candidate.text !== null && candidate.text !== ''
+              ? String(candidate.text)
+              : textCandidate !== undefined && textCandidate !== null && textCandidate !== ''
+              ? String(textCandidate)
+              : undefined,
+        });
+        continue;
       }
-      if ('text' in candidate && candidate.text !== undefined && candidate.text !== null && candidate.text !== '') {
-        normalized.push(String(candidate.text));
-        return;
+      if (candidate.text !== undefined && candidate.text !== null && candidate.text !== '') {
+        normalized.push({
+          value: String(candidate.text),
+          text: String(candidate.text),
+        });
+        continue;
       }
     }
 
-    normalized.push(String(item));
-  });
+    normalized.push({
+      value: String(source),
+      text:
+        textCandidate !== undefined && textCandidate !== null && textCandidate !== ''
+          ? String(textCandidate)
+          : undefined,
+    });
+  }
 
   return normalized;
 };
@@ -896,7 +924,7 @@ const buildReportParams = (uid: string, settings: AdvancedSettingsSnapshot) => {
   const vars = parseVariablesText(settings.variablesText);
   if (vars) {
     Object.entries(vars).forEach(([name, values]) => {
-      values.forEach((value) => params.append(`var-${name}`, value));
+      values.forEach((entry) => params.append(`var-${name}`, entry.value));
     });
   }
 
