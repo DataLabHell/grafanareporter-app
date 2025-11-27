@@ -27,9 +27,10 @@ import {
   TimeRangeInput,
   useStyles2,
 } from '@grafana/ui';
-import React, { ChangeEvent, KeyboardEvent, useState } from 'react';
+import React, { ChangeEvent, KeyboardEvent } from 'react';
 import { getAdvancedConfigStyles } from 'styles/advancedConfigStyles';
 import { LayoutSettings, ReportTheme } from '../../types/reporting';
+import { LayoutDraft, LayoutDraftErrors, LayoutNumericField } from '../../utils/layoutValidation';
 import { GlobalOverridesPanel } from './GlobalOverridesPanel';
 
 interface Props {
@@ -46,7 +47,12 @@ interface Props {
   onVariablesChange: (value: string) => void;
   reportUrl: string;
   layout: LayoutSettings;
+  layoutDraft: LayoutDraft;
+  layoutErrors?: LayoutDraftErrors;
   onLayoutChange: (next: Partial<LayoutSettings>) => void;
+  onLayoutInputChange: (field: LayoutNumericField, value: string) => void;
+  isGlobalOverridesOpen: boolean;
+  onGlobalOverridesToggle: () => void;
   onToggle: () => void;
 }
 
@@ -65,10 +71,14 @@ export const AdvancedSettingsPanel = ({
   onVariablesChange,
   reportUrl,
   layout,
+  layoutDraft,
+  layoutErrors,
   onLayoutChange,
+  onLayoutInputChange,
+  isGlobalOverridesOpen,
+  onGlobalOverridesToggle,
 }: Props) => {
   const styles = useStyles2(getAdvancedConfigStyles);
-  const [isGlobalOverrideOpen, setIsGlobalOverrideOpen] = useState(false);
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === 'Enter' || event.key === ' ') {
@@ -128,10 +138,13 @@ export const AdvancedSettingsPanel = ({
           </Field>
 
           <GlobalOverridesPanel
-            isOpen={isGlobalOverrideOpen}
-            onToggle={() => setIsGlobalOverrideOpen((open) => !open)}
+            isOpen={isGlobalOverridesOpen}
+            onToggle={onGlobalOverridesToggle}
             layout={layout}
+            layoutDraft={layoutDraft}
+            layoutErrors={layoutErrors}
             onLayoutChange={onLayoutChange}
+            onLayoutInputChange={onLayoutInputChange}
           />
 
           <div className={styles.urlPreview}>
