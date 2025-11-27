@@ -47,12 +47,123 @@ const alignmentOptions = [
   { label: 'Right', value: 'right' as BrandingAlignment },
 ];
 
+type LayoutFormState = {
+  panelsPerPage: string;
+  panelSpacing: string;
+  orientation: ReportOrientation;
+  logoUrl: string;
+  logoEnabled: boolean;
+  showPageNumbers: boolean;
+  showPanelTitles: boolean;
+  logoPlacement: BrandingPlacement;
+  logoAlignment: BrandingAlignment;
+  pageNumberPlacement: BrandingPlacement;
+  pageNumberAlignment: BrandingAlignment;
+  renderWidth: string;
+  renderHeight: string;
+  pageMargin: string;
+  brandingLogoMaxWidth: string;
+  brandingLogoMaxHeight: string;
+  brandingTextLineHeight: string;
+  brandingSectionPadding: string;
+};
+
+type NumericValidationResult =
+  | { error: string }
+  | {
+      panelsPerPage: number;
+      panelSpacing: number;
+      renderWidth: number;
+      renderHeight: number;
+      pageMargin: number;
+      brandingLogoMaxWidth: number;
+      brandingLogoMaxHeight: number;
+      brandingTextLineHeight: number;
+      brandingSectionPadding: number;
+    };
+
+const parseNumber = (raw: string) => {
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  const numeric = Number(trimmed);
+  return Number.isFinite(numeric) ? numeric : undefined;
+};
+
+const coerceNumber = (raw: string, fallback: number) => {
+  const numeric = parseNumber(raw);
+  return numeric ?? fallback;
+};
+
+const validateNumericFields = (state: LayoutFormState): NumericValidationResult => {
+  const parseField = (raw: string, label: string, min: number): number | { error: string } => {
+    const value = parseNumber(raw);
+    if (value === undefined) {
+      return { error: `${label} must be a number` };
+    }
+    if (value < min) {
+      return { error: `${label} must be at least ${min}` };
+    }
+    return value;
+  };
+
+  const panelsPerPage = parseField(state.panelsPerPage, 'Panels per page', 1);
+  if (typeof panelsPerPage !== 'number') {
+    return panelsPerPage;
+  }
+  const panelSpacing = parseField(state.panelSpacing, 'Panel spacing', 0);
+  if (typeof panelSpacing !== 'number') {
+    return panelSpacing;
+  }
+  const renderWidth = parseField(state.renderWidth, 'Panel render width', 100);
+  if (typeof renderWidth !== 'number') {
+    return renderWidth;
+  }
+  const renderHeight = parseField(state.renderHeight, 'Panel render height', 100);
+  if (typeof renderHeight !== 'number') {
+    return renderHeight;
+  }
+  const pageMargin = parseField(state.pageMargin, 'Page margin', 0);
+  if (typeof pageMargin !== 'number') {
+    return pageMargin;
+  }
+  const brandingLogoMaxWidth = parseField(state.brandingLogoMaxWidth, 'Logo max width', 1);
+  if (typeof brandingLogoMaxWidth !== 'number') {
+    return brandingLogoMaxWidth;
+  }
+  const brandingLogoMaxHeight = parseField(state.brandingLogoMaxHeight, 'Logo max height', 1);
+  if (typeof brandingLogoMaxHeight !== 'number') {
+    return brandingLogoMaxHeight;
+  }
+  const brandingTextLineHeight = parseField(state.brandingTextLineHeight, 'Text height', 1);
+  if (typeof brandingTextLineHeight !== 'number') {
+    return brandingTextLineHeight;
+  }
+  const brandingSectionPadding = parseField(state.brandingSectionPadding, 'Branding padding', 0);
+  if (typeof brandingSectionPadding !== 'number') {
+    return brandingSectionPadding;
+  }
+
+  return {
+    panelsPerPage,
+    panelSpacing,
+    renderWidth,
+    renderHeight,
+    pageMargin,
+    brandingLogoMaxWidth,
+    brandingLogoMaxHeight,
+    brandingTextLineHeight,
+    brandingSectionPadding,
+  };
+};
+
 const AppConfig = ({ plugin }: AppConfigProps) => {
   const s = useStyles2(getStyles);
   const layout = resolveLayoutSettings(plugin.meta.jsonData?.layout);
-  const [state, setState] = useState({
-    panelsPerPage: layout.panelsPerPage,
-    panelSpacing: layout.panelSpacing,
+  const [state, setState] = useState<LayoutFormState>({
+    panelsPerPage: String(layout.panelsPerPage),
+    panelSpacing: String(layout.panelSpacing),
     orientation: layout.orientation,
     logoUrl: layout.logoUrl,
     logoEnabled: layout.logoEnabled,
@@ -62,13 +173,21 @@ const AppConfig = ({ plugin }: AppConfigProps) => {
     logoAlignment: layout.logoAlignment,
     pageNumberPlacement: layout.pageNumberPlacement,
     pageNumberAlignment: layout.pageNumberAlignment,
+    renderWidth: String(layout.renderWidth),
+    renderHeight: String(layout.renderHeight),
+    pageMargin: String(layout.pageMargin),
+    brandingLogoMaxWidth: String(layout.brandingLogoMaxWidth),
+    brandingLogoMaxHeight: String(layout.brandingLogoMaxHeight),
+    brandingTextLineHeight: String(layout.brandingTextLineHeight),
+    brandingSectionPadding: String(layout.brandingSectionPadding),
   });
+  const [formError, setFormError] = useState<string>();
 
-  const onNumberChange = (key: 'panelsPerPage' | 'panelSpacing') => (event: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseInt(event.target.value, 10);
+  const onNumberChange = (key: keyof LayoutFormState) => (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
     setState((prev) => ({
       ...prev,
-      [key]: Number.isFinite(value) ? value : prev[key],
+      [key]: value,
     }));
   };
 
@@ -155,8 +274,8 @@ const AppConfig = ({ plugin }: AppConfigProps) => {
   };
 
   const isSubmitDisabled =
-    state.panelsPerPage === layout.panelsPerPage &&
-    state.panelSpacing === layout.panelSpacing &&
+    coerceNumber(state.panelsPerPage, layout.panelsPerPage) === layout.panelsPerPage &&
+    coerceNumber(state.panelSpacing, layout.panelSpacing) === layout.panelSpacing &&
     state.orientation === layout.orientation &&
     state.logoUrl === layout.logoUrl &&
     state.logoEnabled === layout.logoEnabled &&
@@ -165,7 +284,14 @@ const AppConfig = ({ plugin }: AppConfigProps) => {
     state.logoPlacement === layout.logoPlacement &&
     state.logoAlignment === layout.logoAlignment &&
     state.pageNumberPlacement === layout.pageNumberPlacement &&
-    state.pageNumberAlignment === layout.pageNumberAlignment;
+    state.pageNumberAlignment === layout.pageNumberAlignment &&
+    coerceNumber(state.renderWidth, layout.renderWidth) === layout.renderWidth &&
+    coerceNumber(state.renderHeight, layout.renderHeight) === layout.renderHeight &&
+    coerceNumber(state.pageMargin, layout.pageMargin) === layout.pageMargin &&
+    coerceNumber(state.brandingLogoMaxWidth, layout.brandingLogoMaxWidth) === layout.brandingLogoMaxWidth &&
+    coerceNumber(state.brandingLogoMaxHeight, layout.brandingLogoMaxHeight) === layout.brandingLogoMaxHeight &&
+    coerceNumber(state.brandingTextLineHeight, layout.brandingTextLineHeight) === layout.brandingTextLineHeight &&
+    coerceNumber(state.brandingSectionPadding, layout.brandingSectionPadding) === layout.brandingSectionPadding;
 
   const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -173,14 +299,21 @@ const AppConfig = ({ plugin }: AppConfigProps) => {
       return;
     }
 
+    const parsed = validateNumericFields(state);
+    if ('error' in parsed) {
+      setFormError(parsed.error);
+      return;
+    }
+    setFormError(undefined);
+
     await updatePluginAndReload(plugin.meta.id, {
       enabled: plugin.meta.enabled,
       pinned: plugin.meta.pinned,
       jsonData: {
         ...plugin.meta.jsonData,
         layout: {
-          panelsPerPage: Math.max(1, state.panelsPerPage),
-          panelSpacing: Math.max(0, state.panelSpacing),
+          panelsPerPage: parsed.panelsPerPage,
+          panelSpacing: parsed.panelSpacing,
           orientation: state.orientation,
           logoUrl: state.logoUrl?.trim() ?? '',
           logoEnabled: state.logoEnabled,
@@ -190,6 +323,13 @@ const AppConfig = ({ plugin }: AppConfigProps) => {
           logoAlignment: state.logoAlignment,
           pageNumberPlacement: state.pageNumberPlacement,
           pageNumberAlignment: state.pageNumberAlignment,
+          renderWidth: parsed.renderWidth,
+          renderHeight: parsed.renderHeight,
+          pageMargin: parsed.pageMargin,
+          brandingLogoMaxWidth: parsed.brandingLogoMaxWidth,
+          brandingLogoMaxHeight: parsed.brandingLogoMaxHeight,
+          brandingTextLineHeight: parsed.brandingTextLineHeight,
+          brandingSectionPadding: parsed.brandingSectionPadding,
         },
       },
     });
@@ -226,6 +366,36 @@ const AppConfig = ({ plugin }: AppConfigProps) => {
             value={state.orientation}
             onChange={onOrientationChange}
             data-testid={testIds.appConfig.orientation}
+          />
+        </Field>
+      </FieldSet>
+
+      <FieldSet label="Rendering dimensions">
+        <Field label="Panel render width (px)">
+          <Input
+            type="number"
+            min={100}
+            step={10}
+            value={state.renderWidth}
+            onChange={onNumberChange('renderWidth')}
+          />
+        </Field>
+        <Field label="Panel render height (px)">
+          <Input
+            type="number"
+            min={100}
+            step={10}
+            value={state.renderHeight}
+            onChange={onNumberChange('renderHeight')}
+          />
+        </Field>
+        <Field label="Page margin (pt)">
+          <Input
+            type="number"
+            min={0}
+            step={1}
+            value={state.pageMargin}
+            onChange={onNumberChange('pageMargin')}
           />
         </Field>
       </FieldSet>
@@ -271,9 +441,9 @@ const AppConfig = ({ plugin }: AppConfigProps) => {
           />
         </Field>
 
-        {state.logoUrl && state.logoEnabled && (
-          <Field label="Logo placement">
-            <div className={s.inlineControls}>
+          {state.logoUrl && state.logoEnabled && (
+            <Field label="Logo placement">
+              <div className={s.inlineControls}>
               <RadioButtonGroup
                 options={placementOptions.map((option) => ({
                   ...option,
@@ -299,6 +469,45 @@ const AppConfig = ({ plugin }: AppConfigProps) => {
             </div>
           </Field>
         )}
+
+        <FieldSet label="Branding dimensions">
+          <Field label="Logo max width (pt)">
+            <Input
+              type="number"
+              min={1}
+              step={1}
+              value={state.brandingLogoMaxWidth}
+              onChange={onNumberChange('brandingLogoMaxWidth')}
+            />
+          </Field>
+          <Field label="Logo max height (pt)">
+            <Input
+              type="number"
+              min={1}
+              step={1}
+              value={state.brandingLogoMaxHeight}
+              onChange={onNumberChange('brandingLogoMaxHeight')}
+            />
+          </Field>
+          <Field label="Page number text height (pt)">
+            <Input
+              type="number"
+              min={1}
+              step={1}
+              value={state.brandingTextLineHeight}
+              onChange={onNumberChange('brandingTextLineHeight')}
+            />
+          </Field>
+          <Field label="Branding padding (pt)">
+            <Input
+              type="number"
+              min={0}
+              step={1}
+              value={state.brandingSectionPadding}
+              onChange={onNumberChange('brandingSectionPadding')}
+            />
+          </Field>
+        </FieldSet>
 
         <Field label="Display panel titles" description="Toggle panel title labels in the PDF.">
           <Switch
@@ -349,6 +558,7 @@ const AppConfig = ({ plugin }: AppConfigProps) => {
       </FieldSet>
 
       <div className={s.actions}>
+        {formError && <div className={s.error}>{formError}</div>}
         <Button type="submit" data-testid={testIds.appConfig.submit} disabled={isSubmitDisabled}>
           Save settings
         </Button>
@@ -362,6 +572,10 @@ export default AppConfig;
 const getStyles = (theme: GrafanaTheme2) => ({
   actions: css`
     margin-top: ${theme.spacing(3)};
+  `,
+  error: css`
+    color: ${theme.colors.error.text};
+    margin-bottom: ${theme.spacing(1)};
   `,
   logoField: css`
     display: flex;

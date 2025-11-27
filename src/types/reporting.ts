@@ -35,6 +35,13 @@ export interface LayoutSettings {
   logoAlignment?: BrandingAlignment;
   pageNumberPlacement?: BrandingPlacement;
   pageNumberAlignment?: BrandingAlignment;
+  renderWidth?: number;
+  renderHeight?: number;
+  pageMargin?: number;
+  brandingLogoMaxWidth?: number;
+  brandingLogoMaxHeight?: number;
+  brandingTextLineHeight?: number;
+  brandingSectionPadding?: number;
 }
 
 export interface ReporterPluginSettings {
@@ -54,6 +61,13 @@ export const DEFAULT_LAYOUT_SETTINGS: Required<LayoutSettings> = {
   showPageNumbers: true,
   pageNumberPlacement: 'footer',
   pageNumberAlignment: 'right',
+  renderWidth: 1600,
+  renderHeight: 900,
+  pageMargin: 32,
+  brandingLogoMaxWidth: 120,
+  brandingLogoMaxHeight: 36,
+  brandingTextLineHeight: 12,
+  brandingSectionPadding: 6,
 };
 
 export const resolveLayoutSettings = (layout?: LayoutSettings): Required<LayoutSettings> => ({
@@ -77,4 +91,28 @@ export const resolveLayoutSettings = (layout?: LayoutSettings): Required<LayoutS
   logoAlignment: layout?.logoAlignment ?? DEFAULT_LAYOUT_SETTINGS.logoAlignment,
   pageNumberPlacement: layout?.pageNumberPlacement ?? DEFAULT_LAYOUT_SETTINGS.pageNumberPlacement,
   pageNumberAlignment: layout?.pageNumberAlignment ?? DEFAULT_LAYOUT_SETTINGS.pageNumberAlignment,
+  renderWidth:
+    typeof layout?.renderWidth === 'number' && layout.renderWidth > 0 ? layout.renderWidth : DEFAULT_LAYOUT_SETTINGS.renderWidth,
+  renderHeight:
+    typeof layout?.renderHeight === 'number' && layout.renderHeight > 0
+      ? layout.renderHeight
+      : DEFAULT_LAYOUT_SETTINGS.renderHeight,
+  pageMargin:
+    typeof layout?.pageMargin === 'number' && layout.pageMargin >= 0 ? layout.pageMargin : DEFAULT_LAYOUT_SETTINGS.pageMargin,
+  brandingLogoMaxWidth:
+    typeof layout?.brandingLogoMaxWidth === 'number' && layout.brandingLogoMaxWidth > 0
+      ? layout.brandingLogoMaxWidth
+      : DEFAULT_LAYOUT_SETTINGS.brandingLogoMaxWidth,
+  brandingLogoMaxHeight:
+    typeof layout?.brandingLogoMaxHeight === 'number' && layout.brandingLogoMaxHeight > 0
+      ? layout.brandingLogoMaxHeight
+      : DEFAULT_LAYOUT_SETTINGS.brandingLogoMaxHeight,
+  brandingTextLineHeight:
+    typeof layout?.brandingTextLineHeight === 'number' && layout.brandingTextLineHeight > 0
+      ? layout.brandingTextLineHeight
+      : DEFAULT_LAYOUT_SETTINGS.brandingTextLineHeight,
+  brandingSectionPadding:
+    typeof layout?.brandingSectionPadding === 'number' && layout.brandingSectionPadding >= 0
+      ? layout.brandingSectionPadding
+      : DEFAULT_LAYOUT_SETTINGS.brandingSectionPadding,
 });

@@ -46,19 +46,19 @@ const alignmentOptions = [
 export const GlobalOverridesPanel = ({ isOpen, onToggle, layout, onLayoutChange }: Props) => {
   const styles = useStyles2(getStyles);
 
-  const handlePanelsPerPageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseInt(event.target.value, 10);
-    if (Number.isFinite(value)) {
-      onLayoutChange({ panelsPerPage: value });
-    }
-  };
-
-  const handlePanelSpacingChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseInt(event.target.value, 10);
-    if (Number.isFinite(value)) {
-      onLayoutChange({ panelSpacing: value });
-    }
-  };
+  const handleNumericChange =
+    (key: keyof LayoutSettings, options: { min?: number } = {}) =>
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const value = Number(event.target.value);
+      if (!Number.isFinite(value)) {
+        return;
+      }
+      const min = options.min ?? Number.NEGATIVE_INFINITY;
+      if (value < min) {
+        return;
+      }
+      onLayoutChange({ [key]: value } as Partial<LayoutSettings>);
+    };
 
   const handleOrientationChange = (value: string) => {
     if (value === 'portrait' || value === 'landscape') {
@@ -117,11 +117,53 @@ export const GlobalOverridesPanel = ({ isOpen, onToggle, layout, onLayoutChange 
       {isOpen && (
         <div className={styles.overridePanel}>
           <Field label="Panels per page">
-            <Input type="number" min={1} step={1} value={layout.panelsPerPage} onChange={handlePanelsPerPageChange} />
+            <Input
+              type="number"
+              min={1}
+              step={1}
+              value={layout.panelsPerPage}
+              onChange={handleNumericChange('panelsPerPage', { min: 1 })}
+            />
           </Field>
 
           <Field label="Panel spacing (pt)">
-            <Input type="number" min={0} step={1} value={layout.panelSpacing} onChange={handlePanelSpacingChange} />
+            <Input
+              type="number"
+              min={0}
+              step={1}
+              value={layout.panelSpacing}
+              onChange={handleNumericChange('panelSpacing', { min: 0 })}
+            />
+          </Field>
+
+          <Field label="Panel render width (px)">
+            <Input
+              type="number"
+              min={100}
+              step={10}
+              value={layout.renderWidth}
+              onChange={handleNumericChange('renderWidth', { min: 100 })}
+            />
+          </Field>
+
+          <Field label="Panel render height (px)">
+            <Input
+              type="number"
+              min={100}
+              step={10}
+              value={layout.renderHeight}
+              onChange={handleNumericChange('renderHeight', { min: 100 })}
+            />
+          </Field>
+
+          <Field label="Page margin (pt)">
+            <Input
+              type="number"
+              min={0}
+              step={1}
+              value={layout.pageMargin}
+              onChange={handleNumericChange('pageMargin', { min: 0 })}
+            />
           </Field>
 
           <Field label="Report orientation">
@@ -168,6 +210,46 @@ export const GlobalOverridesPanel = ({ isOpen, onToggle, layout, onLayoutChange 
               </div>
             </Field>
           )}
+
+          <Field label="Logo max width (pt)">
+            <Input
+              type="number"
+              min={1}
+              step={1}
+              value={layout.brandingLogoMaxWidth}
+              onChange={handleNumericChange('brandingLogoMaxWidth', { min: 1 })}
+            />
+          </Field>
+
+          <Field label="Logo max height (pt)">
+            <Input
+              type="number"
+              min={1}
+              step={1}
+              value={layout.brandingLogoMaxHeight}
+              onChange={handleNumericChange('brandingLogoMaxHeight', { min: 1 })}
+            />
+          </Field>
+
+          <Field label="Page number text height (pt)">
+            <Input
+              type="number"
+              min={1}
+              step={1}
+              value={layout.brandingTextLineHeight}
+              onChange={handleNumericChange('brandingTextLineHeight', { min: 1 })}
+            />
+          </Field>
+
+          <Field label="Branding padding (pt)">
+            <Input
+              type="number"
+              min={0}
+              step={1}
+              value={layout.brandingSectionPadding}
+              onChange={handleNumericChange('brandingSectionPadding', { min: 0 })}
+            />
+          </Field>
 
           <Field label="Logo">
             <div className={styles.fieldStack}>
@@ -226,6 +308,8 @@ const toggleOnKey = (event: React.KeyboardEvent<HTMLDivElement>, handler: () => 
     handler();
   }
 };
+
+export default GlobalOverridesPanel;
 
 const getStyles = (theme: GrafanaTheme2) => ({
   subheader: css`
@@ -287,5 +371,3 @@ const getStyles = (theme: GrafanaTheme2) => ({
     }
   `,
 });
-
-export default GlobalOverridesPanel;
