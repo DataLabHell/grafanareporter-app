@@ -95,3 +95,10 @@ Grafana writes that `jsonData` into the plugin settings, so users see those defa
 ## Support & feedback
 
 Issues and feature requests are welcome via the project repository. Contributions (bug fixes, docs, or new layout features) are gladly reviewed. Open a pull request or start a discussion describing the use case.
+
+
+## Planned features
+
+- Configurable parallell render calls to decrease report generation time
+- More customization options
+- Possibility to reset settings to originals
