@@ -19,8 +19,3 @@ Existing dashboard-to-PDF projects often require service accounts or bundled Chr
 ## Status & docs
 
 This plugin is **incubating**. APIs and defaults may change. See [`src/README.md`](src/README.md) for setup instructions, provisioning examples, query parameters and other technical details.
-
-# Future ideas
-
-- Parallell render calls to decrease report generation time
-- More customization options like logo settings, image resolution...

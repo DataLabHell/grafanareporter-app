@@ -14,10 +14,9 @@
  * limitations under the License.
  */
 
-import { css } from '@emotion/css';
-import { GrafanaTheme2 } from '@grafana/data';
 import { Button, Field, Input, RadioButtonGroup, Switch, useStyles2 } from '@grafana/ui';
 import React from 'react';
+import { getAdvancedConfigStyles } from 'styles/advancedConfigStyles';
 import { BrandingAlignment, BrandingPlacement, LayoutSettings, ReportOrientation } from '../../types/reporting';
 
 interface Props {
@@ -44,7 +43,7 @@ const alignmentOptions = [
 ];
 
 export const GlobalOverridesPanel = ({ isOpen, onToggle, layout, onLayoutChange }: Props) => {
-  const styles = useStyles2(getStyles);
+  const styles = useStyles2(getAdvancedConfigStyles);
 
   const handleNumericChange =
     (key: keyof LayoutSettings, options: { min?: number } = {}) =>
@@ -319,64 +318,3 @@ const toggleOnKey = (event: React.KeyboardEvent<HTMLDivElement>, handler: () => 
 };
 
 export default GlobalOverridesPanel;
-
-const getStyles = (theme: GrafanaTheme2) => ({
-  subheader: css`
-    margin-top: ${theme.spacing(2)};
-    padding: ${theme.spacing(1)} ${theme.spacing(0.5)};
-    border-bottom: 1px solid ${theme.colors.border.weak};
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    cursor: pointer;
-    outline: none;
-  `,
-  title: css`
-    font-weight: ${theme.typography.fontWeightMedium};
-    margin-bottom: ${theme.spacing(0.5)};
-  `,
-  description: css`
-    color: ${theme.colors.text.secondary};
-    font-size: ${theme.typography.bodySmall.fontSize};
-  `,
-  overridePanel: css`
-    display: flex;
-    flex-direction: column;
-    gap: ${theme.spacing(2)};
-    padding-bottom: ${theme.spacing(2)};
-  `,
-  inlineRow: css`
-    display: flex;
-    align-items: center;
-    gap: ${theme.spacing(1)};
-  `,
-  inlineControls: css`
-    display: flex;
-    flex-wrap: wrap;
-    gap: ${theme.spacing(1)};
-    align-items: center;
-  `,
-  fieldStack: css`
-    display: flex;
-    flex-direction: column;
-    gap: ${theme.spacing(1)};
-  `,
-  muted: css`
-    color: ${theme.colors.text.secondary};
-    font-size: ${theme.typography.bodySmall.fontSize};
-  `,
-  logoPreview: css`
-    margin-top: ${theme.spacing(1)};
-    padding: ${theme.spacing(1)};
-    border: 1px dashed ${theme.colors.border.medium};
-    border-radius: ${theme.shape.radius.default};
-    background: ${theme.colors.background.secondary};
-    max-width: 200px;
-
-    img {
-      max-width: 100%;
-      height: auto;
-      display: block;
-    }
-  `,
-});

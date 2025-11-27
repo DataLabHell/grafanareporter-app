@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-import { css } from '@emotion/css';
-import { GrafanaTheme2, TimeRange } from '@grafana/data';
+import { TimeRange } from '@grafana/data';
 import { TimeZone } from '@grafana/schema';
 import {
   Button,
@@ -29,6 +28,7 @@ import {
   useStyles2,
 } from '@grafana/ui';
 import React, { ChangeEvent, KeyboardEvent, useState } from 'react';
+import { getAdvancedConfigStyles } from 'styles/advancedConfigStyles';
 import { LayoutSettings, ReportTheme } from '../../types/reporting';
 import { GlobalOverridesPanel } from './GlobalOverridesPanel';
 
@@ -67,7 +67,7 @@ export const AdvancedSettingsPanel = ({
   layout,
   onLayoutChange,
 }: Props) => {
-  const styles = useStyles2(getStyles);
+  const styles = useStyles2(getAdvancedConfigStyles);
   const [isGlobalOverrideOpen, setIsGlobalOverrideOpen] = useState(false);
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -148,53 +148,3 @@ export const AdvancedSettingsPanel = ({
     </>
   );
 };
-
-const getStyles = (theme: GrafanaTheme2) => ({
-  header: css`
-    margin: ${theme.spacing(3)} 0 ${theme.spacing(2)};
-    padding: ${theme.spacing(2)} ${theme.spacing(1)};
-    border-bottom: 1px solid ${theme.colors.border.weak};
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    cursor: pointer;
-    outline: none;
-  `,
-  title: css`
-    font-weight: ${theme.typography.fontWeightMedium};
-    margin-bottom: ${theme.spacing(0.5)};
-  `,
-  description: css`
-    color: ${theme.colors.text.secondary};
-    font-size: ${theme.typography.bodySmall.fontSize};
-  `,
-  panel: css`
-    display: flex;
-    flex-direction: column;
-    gap: ${theme.spacing(2)};
-    margin-bottom: ${theme.spacing(3)};
-  `,
-  urlPreview: css`
-    display: flex;
-    flex-direction: column;
-    gap: ${theme.spacing(0.5)};
-  `,
-  urlLabel: css`
-    font-weight: ${theme.typography.fontWeightMedium};
-  `,
-  urlRow: css`
-    display: flex;
-    align-items: center;
-    gap: ${theme.spacing(1)};
-  `,
-  urlText: css`
-    flex: 1;
-    background: ${theme.colors.background.secondary};
-    border-radius: ${theme.shape.radius.default};
-    padding: ${theme.spacing(1)};
-    word-break: break-word;
-    white-space: pre-wrap;
-    max-height: 90px;
-    overflow-y: auto;
-  `,
-});
