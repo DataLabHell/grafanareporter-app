@@ -762,6 +762,13 @@ const parseLayoutOverrides = (params: URLSearchParams): LayoutSettings | undefin
   const pagePlacement = params.get('pagePlacement');
   const pageAlignment = params.get('pageAlignment');
   const logoUrl = params.get('logoUrl');
+  const renderWidthParam = params.get('renderWidth');
+  const renderHeightParam = params.get('renderHeight');
+  const pageMarginParam = params.get('pageMargin');
+  const brandingLogoMaxWidthParam = params.get('brandingLogoMaxWidth');
+  const brandingLogoMaxHeightParam = params.get('brandingLogoMaxHeight');
+  const brandingTextLineHeightParam = params.get('brandingTextLineHeight');
+  const brandingSectionPaddingParam = params.get('brandingSectionPadding');
 
   if (panelsPerPageParam !== null) {
     const panelsPerPage = Number(panelsPerPageParam);
@@ -803,6 +810,48 @@ const parseLayoutOverrides = (params: URLSearchParams): LayoutSettings | undefin
   if (pageAlignment === 'left' || pageAlignment === 'center' || pageAlignment === 'right') {
     layout.pageNumberAlignment = pageAlignment as BrandingAlignment;
   }
+  if (renderWidthParam !== null) {
+    const renderWidth = Number(renderWidthParam);
+    if (Number.isFinite(renderWidth) && renderWidth > 0) {
+      layout.renderWidth = renderWidth;
+    }
+  }
+  if (renderHeightParam !== null) {
+    const renderHeight = Number(renderHeightParam);
+    if (Number.isFinite(renderHeight) && renderHeight > 0) {
+      layout.renderHeight = renderHeight;
+    }
+  }
+  if (pageMarginParam !== null) {
+    const pageMargin = Number(pageMarginParam);
+    if (Number.isFinite(pageMargin) && pageMargin >= 0) {
+      layout.pageMargin = pageMargin;
+    }
+  }
+  if (brandingLogoMaxWidthParam !== null) {
+    const value = Number(brandingLogoMaxWidthParam);
+    if (Number.isFinite(value) && value > 0) {
+      layout.brandingLogoMaxWidth = value;
+    }
+  }
+  if (brandingLogoMaxHeightParam !== null) {
+    const value = Number(brandingLogoMaxHeightParam);
+    if (Number.isFinite(value) && value > 0) {
+      layout.brandingLogoMaxHeight = value;
+    }
+  }
+  if (brandingTextLineHeightParam !== null) {
+    const value = Number(brandingTextLineHeightParam);
+    if (Number.isFinite(value) && value > 0) {
+      layout.brandingTextLineHeight = value;
+    }
+  }
+  if (brandingSectionPaddingParam !== null) {
+    const value = Number(brandingSectionPaddingParam);
+    if (Number.isFinite(value) && value >= 0) {
+      layout.brandingSectionPadding = value;
+    }
+  }
 
   return Object.keys(layout).length ? layout : undefined;
 };
@@ -837,6 +886,13 @@ const buildReportParams = (uid: string, settings: AdvancedSettingsSnapshot) => {
   params.set('logoAlignment', settings.layout.logoAlignment);
   params.set('pagePlacement', settings.layout.pageNumberPlacement);
   params.set('pageAlignment', settings.layout.pageNumberAlignment);
+  params.set('renderWidth', String(settings.layout.renderWidth));
+  params.set('renderHeight', String(settings.layout.renderHeight));
+  params.set('pageMargin', String(settings.layout.pageMargin));
+  params.set('brandingLogoMaxWidth', String(settings.layout.brandingLogoMaxWidth));
+  params.set('brandingLogoMaxHeight', String(settings.layout.brandingLogoMaxHeight));
+  params.set('brandingTextLineHeight', String(settings.layout.brandingTextLineHeight));
+  params.set('brandingSectionPadding', String(settings.layout.brandingSectionPadding));
   const vars = parseVariablesText(settings.variablesText);
   if (vars) {
     Object.entries(vars).forEach(([name, values]) => {

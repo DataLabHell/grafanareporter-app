@@ -60,13 +60,6 @@ interface GenerateReportOptions {
   signal?: AbortSignal;
 }
 
-const RENDER_WIDTH = 1600;
-const RENDER_HEIGHT = 900;
-const PDF_MARGIN = 32;
-const BRANDING_LOGO_MAX_WIDTH = 120;
-const BRANDING_LOGO_MAX_HEIGHT = 36;
-const BRANDING_TEXT_LINE_HEIGHT = 12;
-const BRANDING_SECTION_PADDING = 6;
 const DEFAULT_RAW_TIME_RANGE: RawTimeRange = { from: 'now-6h', to: 'now' };
 
 // Orchestrates the entire report flow: fetch dashboard, resolve variables, render panels via /render, then compose PDF.
@@ -122,6 +115,17 @@ export const generateDashboardReport = async ({
     throw new Error('Could not determine the current time range.');
   }
 
+  // Layout preferences can come from plugin defaults (AppConfig) or manual overrides (advanced settings/query params).
+  // resolveReportLayout merges them and falls back to DEFAULT_LAYOUT_SETTINGS if nothing else is defined.
+  const layoutConfig = resolveReportLayout(settings?.layout, manualLayout);
+  const renderWidth = layoutConfig.renderWidth;
+  const renderHeight = layoutConfig.renderHeight;
+  const pageMargin = layoutConfig.pageMargin;
+  const logoAsset =
+    layoutConfig.logoEnabled && layoutConfig.logoUrl ? await loadLogoAsset(layoutConfig.logoUrl) : undefined;
+  const headerHeight = getBrandingReservedHeight('header', layoutConfig, logoAsset);
+  const footerHeight = getBrandingReservedHeight('footer', layoutConfig, logoAsset);
+
   const panelImages: Array<{ title: string; dataUrl: string }> = [];
 
   // Render each flattened panel via Grafana's /render/d-solo endpoint and collect the resulting data URLs.
@@ -147,8 +151,8 @@ export const generateDashboardReport = async ({
       from: String(timeRange.from),
       to: String(timeRange.to),
       theme: reporterTheme,
-      width: String(RENDER_WIDTH),
-      height: String(RENDER_HEIGHT),
+      width: String(renderWidth),
+      height: String(renderHeight),
       timezone: String(timeZone ?? 'browser'),
       kiosk: '1',
     });
@@ -189,14 +193,6 @@ export const generateDashboardReport = async ({
     throw new Error('No renderable panels were found on this dashboard.');
   }
 
-  // Layout preferences can come from plugin defaults (AppConfig) or manual overrides (advanced settings/query params).
-  // resolveReportLayout merges them and falls back to DEFAULT_LAYOUT_SETTINGS if nothing else is defined.
-  const layoutConfig = resolveReportLayout(settings?.layout, manualLayout);
-  const logoAsset =
-    layoutConfig.logoEnabled && layoutConfig.logoUrl ? await loadLogoAsset(layoutConfig.logoUrl) : undefined;
-  const headerHeight = getBrandingReservedHeight('header', layoutConfig, logoAsset);
-  const footerHeight = getBrandingReservedHeight('footer', layoutConfig, logoAsset);
-
   notify('Composing PDF...');
   throwIfAborted(signal);
   const pdf = new jsPDF({
@@ -224,23 +220,23 @@ export const generateDashboardReport = async ({
     const pageItems = panelImages.slice(pageIndex, pageIndex + panelsPerPage);
     throwIfAborted(signal);
     const activeColumns = Math.min(gridColumns, Math.max(1, pageItems.length));
-    const slotWidth = Math.max(10, (pageWidth - PDF_MARGIN * 2 - panelSpacing * (activeColumns - 1)) / activeColumns);
+    const slotWidth = Math.max(10, (pageWidth - pageMargin * 2 - panelSpacing * (activeColumns - 1)) / activeColumns);
     const slotHeight = Math.max(
       40,
-      (pageHeight - PDF_MARGIN * 2 - headerHeight - footerHeight - panelSpacing * (gridRows - 1)) / gridRows
+      (pageHeight - pageMargin * 2 - headerHeight - footerHeight - panelSpacing * (gridRows - 1)) / gridRows
     );
     pageItems.forEach((image, slotIndex) => {
       const rowIndex = Math.floor(slotIndex / activeColumns);
       const columnIndex = slotIndex % activeColumns;
-      const xOffset = PDF_MARGIN + columnIndex * (slotWidth + panelSpacing);
-      const yOffset = PDF_MARGIN + headerHeight + rowIndex * (slotHeight + panelSpacing);
+      const xOffset = pageMargin + columnIndex * (slotWidth + panelSpacing);
+      const yOffset = pageMargin + headerHeight + rowIndex * (slotHeight + panelSpacing);
       const contentHeight = Math.max(10, slotHeight - contentOffset);
       const maxImageWidth = slotWidth;
       const { width: imageWidth, height: imageHeight } = fitRectangle(
         maxImageWidth,
         contentHeight,
-        RENDER_WIDTH,
-        RENDER_HEIGHT
+        renderWidth,
+        renderHeight
       );
       const imageX = xOffset + (slotWidth - imageWidth) / 2;
       const imageY = yOffset + contentOffset + (contentHeight - imageHeight) / 2;
@@ -734,7 +730,7 @@ const getBrandingReservedHeight = (
 ) => {
   const logoDimensions =
     layout.logoEnabled && layout.logoPlacement === placement && logo
-      ? fitRectangle(BRANDING_LOGO_MAX_WIDTH, BRANDING_LOGO_MAX_HEIGHT, logo.width, logo.height)
+      ? fitRectangle(layout.brandingLogoMaxWidth, layout.brandingLogoMaxHeight, logo.width, logo.height)
       : undefined;
   const showNumbers = layout.showPageNumbers && layout.pageNumberPlacement === placement;
 
@@ -742,8 +738,8 @@ const getBrandingReservedHeight = (
     return 0;
   }
 
-  const contentHeight = Math.max(logoDimensions?.height ?? 0, showNumbers ? BRANDING_TEXT_LINE_HEIGHT : 0);
-  return contentHeight > 0 ? contentHeight + BRANDING_SECTION_PADDING * 2 : 0;
+  const contentHeight = Math.max(logoDimensions?.height ?? 0, showNumbers ? layout.brandingTextLineHeight : 0);
+  return contentHeight > 0 ? contentHeight + layout.brandingSectionPadding * 2 : 0;
 };
 
 const fitRectangle = (maxWidth: number, maxHeight: number, originalWidth: number, originalHeight: number) => {
@@ -800,7 +796,7 @@ const renderBrandingArea = (
 
   const logoDimensions =
     layoutSettings.logoEnabled && layoutSettings.logoPlacement === placement && logo
-      ? fitRectangle(BRANDING_LOGO_MAX_WIDTH, BRANDING_LOGO_MAX_HEIGHT, logo.width, logo.height)
+      ? fitRectangle(layoutSettings.brandingLogoMaxWidth, layoutSettings.brandingLogoMaxHeight, logo.width, logo.height)
       : undefined;
   const showNumbers = layoutSettings.showPageNumbers && layoutSettings.pageNumberPlacement === placement;
 
@@ -808,48 +804,64 @@ const renderBrandingArea = (
     return;
   }
 
-  const areaTop = placement === 'header' ? PDF_MARGIN : pageHeight - PDF_MARGIN - areaHeight;
-  const centerY = areaTop + areaHeight / 2;
+  const padding = layoutSettings.brandingSectionPadding;
+  const areaTop = placement === 'header' ? padding : pageHeight - areaHeight + padding;
+  const centerY = areaTop + (areaHeight - padding * 2) / 2;
 
   if (logoDimensions && logo) {
-    const logoX = getAlignedX(layoutSettings.logoAlignment, logoDimensions.width, pageWidth);
+    const logoX = getAlignedX(layoutSettings.logoAlignment, logoDimensions.width, pageWidth, layoutSettings.pageMargin);
     const logoY = centerY - logoDimensions.height / 2;
     pdf.addImage(logo.dataUrl, 'PNG', logoX, logoY, logoDimensions.width, logoDimensions.height);
   }
 
   if (showNumbers) {
     const label = `Page ${pageNumber} of ${totalPages}`;
-    const textY = centerY + BRANDING_TEXT_LINE_HEIGHT / 3;
+    const textY = centerY + layoutSettings.brandingTextLineHeight / 3;
     pdf.setFontSize(10);
-    const { textX, textOptions } = getAlignedTextPosition(layoutSettings.pageNumberAlignment, pageWidth);
+    const { textX, textOptions } = getAlignedTextPosition(
+      layoutSettings.pageNumberAlignment,
+      pageWidth,
+      layoutSettings.pageMargin
+    );
     pdf.text(label, textX, textY, textOptions);
   }
 };
 
-const getAlignedX = (alignment: BrandingAlignment, contentWidth: number, pageWidth: number) => {
+const getAlignedX = (alignment: BrandingAlignment, contentWidth: number, pageWidth: number, pageMargin: number) => {
   if (alignment === 'center') {
     return pageWidth / 2 - contentWidth / 2;
   }
   if (alignment === 'right') {
-    return pageWidth - PDF_MARGIN - contentWidth;
+    return pageWidth - pageMargin - contentWidth;
   }
-  return PDF_MARGIN;
+  return pageMargin;
 };
 
 const getAlignedTextPosition = (
   alignment: BrandingAlignment,
-  pageWidth: number
+  pageWidth: number,
+  pageMargin: number
 ): {
   textX: number;
   textOptions?: TextOptionsLight;
 } => {
   if (alignment === 'center') {
-    return { textX: pageWidth / 2, textOptions: { align: 'center' as const } };
+    return {
+      textX: pageWidth / 2,
+      textOptions: { align: 'center' },
+    };
   }
+
   if (alignment === 'right') {
-    return { textX: pageWidth - PDF_MARGIN, textOptions: { align: 'right' as const } };
+    return {
+      textX: pageWidth - pageMargin,
+      textOptions: { align: 'right' },
+    };
   }
-  return { textX: PDF_MARGIN, textOptions: undefined };
+
+  return {
+    textX: pageMargin,
+  };
 };
 
 const throwIfAborted = (signal?: AbortSignal) => {
