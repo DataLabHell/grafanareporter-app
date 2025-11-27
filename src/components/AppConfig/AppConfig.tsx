@@ -55,6 +55,7 @@ type LayoutFormState = {
   logoEnabled: boolean;
   showPageNumbers: boolean;
   showPanelTitles: boolean;
+  panelTitleFontSize: string;
   logoPlacement: BrandingPlacement;
   logoAlignment: BrandingAlignment;
   pageNumberPlacement: BrandingPlacement;
@@ -73,6 +74,7 @@ type NumericValidationResult =
   | {
       panelsPerPage: number;
       panelSpacing: number;
+      panelTitleFontSize: number;
       renderWidth: number;
       renderHeight: number;
       pageMargin: number;
@@ -116,6 +118,10 @@ const validateNumericFields = (state: LayoutFormState): NumericValidationResult 
   if (typeof panelSpacing !== 'number') {
     return panelSpacing;
   }
+  const panelTitleFontSize = parseField(state.panelTitleFontSize, 'Panel title font size', 1);
+  if (typeof panelTitleFontSize !== 'number') {
+    return panelTitleFontSize;
+  }
   const renderWidth = parseField(state.renderWidth, 'Panel render width', 100);
   if (typeof renderWidth !== 'number') {
     return renderWidth;
@@ -148,6 +154,7 @@ const validateNumericFields = (state: LayoutFormState): NumericValidationResult 
   return {
     panelsPerPage,
     panelSpacing,
+    panelTitleFontSize,
     renderWidth,
     renderHeight,
     pageMargin,
@@ -169,6 +176,7 @@ const AppConfig = ({ plugin }: AppConfigProps) => {
     logoEnabled: layout.logoEnabled,
     showPageNumbers: layout.showPageNumbers,
     showPanelTitles: layout.showPanelTitles,
+    panelTitleFontSize: String(layout.panelTitleFontSize),
     logoPlacement: layout.logoPlacement,
     logoAlignment: layout.logoAlignment,
     pageNumberPlacement: layout.pageNumberPlacement,
@@ -276,6 +284,7 @@ const AppConfig = ({ plugin }: AppConfigProps) => {
   const isSubmitDisabled =
     coerceNumber(state.panelsPerPage, layout.panelsPerPage) === layout.panelsPerPage &&
     coerceNumber(state.panelSpacing, layout.panelSpacing) === layout.panelSpacing &&
+    coerceNumber(state.panelTitleFontSize, layout.panelTitleFontSize) === layout.panelTitleFontSize &&
     state.orientation === layout.orientation &&
     state.logoUrl === layout.logoUrl &&
     state.logoEnabled === layout.logoEnabled &&
@@ -314,6 +323,7 @@ const AppConfig = ({ plugin }: AppConfigProps) => {
         layout: {
           panelsPerPage: parsed.panelsPerPage,
           panelSpacing: parsed.panelSpacing,
+          panelTitleFontSize: parsed.panelTitleFontSize,
           orientation: state.orientation,
           logoUrl: state.logoUrl?.trim() ?? '',
           logoEnabled: state.logoEnabled,
@@ -515,6 +525,9 @@ const AppConfig = ({ plugin }: AppConfigProps) => {
             onChange={handlePanelTitleToggle}
             data-testid={testIds.appConfig.panelTitles}
           />
+        </Field>
+        <Field label="Panel title font size (pt)">
+          <Input type="number" min={1} step={1} value={state.panelTitleFontSize} onChange={onNumberChange('panelTitleFontSize')} />
         </Field>
 
         <Field label="Display page numbers" description={'Render "Page X of Y".'}>

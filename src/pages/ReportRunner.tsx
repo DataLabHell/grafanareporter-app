@@ -785,6 +785,7 @@ const parseLayoutOverrides = (params: URLSearchParams): LayoutSettings | undefin
   const logo = params.get('logo');
   const pageNumbers = params.get('pageNumbers');
   const panelTitles = params.get('panelTitles');
+  const panelTitleFontSizeParam = params.get('panelTitleFontSize');
   const logoPlacement = params.get('logoPlacement');
   const logoAlignment = params.get('logoAlignment');
   const pagePlacement = params.get('pagePlacement');
@@ -822,6 +823,12 @@ const parseLayoutOverrides = (params: URLSearchParams): LayoutSettings | undefin
   }
   if (panelTitles === 'true' || panelTitles === 'false') {
     layout.showPanelTitles = panelTitles === 'true';
+  }
+  if (panelTitleFontSizeParam !== null) {
+    const value = Number(panelTitleFontSizeParam);
+    if (Number.isFinite(value) && value > 0) {
+      layout.panelTitleFontSize = value;
+    }
   }
   if (logoUrl) {
     layout.logoUrl = logoUrl;
@@ -909,6 +916,7 @@ const buildReportParams = (uid: string, settings: AdvancedSettingsSnapshot) => {
   params.set('panelSpacing', String(settings.layout.panelSpacing));
   params.set('logo', settings.layout.logoEnabled ? 'true' : 'false');
   params.set('panelTitles', settings.layout.showPanelTitles ? 'true' : 'false');
+  params.set('panelTitleFontSize', String(settings.layout.panelTitleFontSize));
   params.set('pageNumbers', settings.layout.showPageNumbers ? 'true' : 'false');
   params.set('logoPlacement', settings.layout.logoPlacement);
   params.set('logoAlignment', settings.layout.logoAlignment);

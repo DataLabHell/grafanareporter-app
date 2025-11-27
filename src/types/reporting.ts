@@ -35,6 +35,7 @@ export interface LayoutSettings {
   panelsPerPage?: number;
   panelSpacing?: number;
   showPanelTitles?: boolean;
+  panelTitleFontSize?: number;
   showPageNumbers?: boolean;
   logoUrl?: string;
   logoEnabled?: boolean;
@@ -65,6 +66,7 @@ export const DEFAULT_LAYOUT_SETTINGS: Required<LayoutSettings> = {
   logoPlacement: 'footer',
   logoAlignment: 'left',
   showPanelTitles: true,
+  panelTitleFontSize: 14,
   showPageNumbers: true,
   pageNumberPlacement: 'footer',
   pageNumberAlignment: 'right',
@@ -86,6 +88,10 @@ export const resolveLayoutSettings = (layout?: LayoutSettings): Required<LayoutS
       ? layout.panelSpacing
       : DEFAULT_LAYOUT_SETTINGS.panelSpacing,
   showPanelTitles: layout?.showPanelTitles ?? DEFAULT_LAYOUT_SETTINGS.showPanelTitles,
+  panelTitleFontSize:
+    typeof layout?.panelTitleFontSize === 'number' && layout.panelTitleFontSize > 0
+      ? layout.panelTitleFontSize
+      : DEFAULT_LAYOUT_SETTINGS.panelTitleFontSize,
   showPageNumbers: layout?.showPageNumbers ?? DEFAULT_LAYOUT_SETTINGS.showPageNumbers,
   logoUrl: layout?.logoUrl?.trim() ?? DEFAULT_LAYOUT_SETTINGS.logoUrl,
   logoEnabled:
