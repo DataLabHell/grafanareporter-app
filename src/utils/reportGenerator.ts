@@ -27,13 +27,13 @@ import {
   LayoutSettings,
   ReporterPluginSettings,
   ReportTheme,
+  VariableValue,
+  VariableValueMap,
   resolveLayoutSettings,
 } from '../types/reporting';
 import { DashboardApiResponse, DashboardModel, PanelModel } from '../types/grafana';
 
 type ProgressHandler = (message: string) => void;
-
-type VariableValueMap = Record<string, string[]>;
 
 interface ManualDashboardContext {
   dashboardUid?: string;
@@ -304,8 +304,8 @@ const flattenPanels = (
       if (panel.repeat && !hasScopedOverride(combinedScopedVars, panel.repeat)) {
         const repeatValues = variableValues[panel.repeat];
         if (repeatValues?.length) {
-          repeatValues.forEach((value, index) => {
-            const repeatScope = mergeScopedVars(combinedScopedVars, buildScopedVarOverride(panel.repeat!, value));
+          repeatValues.forEach((entry, index) => {
+            const repeatScope = mergeScopedVars(combinedScopedVars, buildScopedVarOverride(panel.repeat!, entry));
             const nextSuffix = appendCloneSuffix(cloneSuffix, index);
             result.push(...flattenPanels(panel.panels, variableValues, repeatScope, nextSuffix));
           });
@@ -322,8 +322,8 @@ const flattenPanels = (
     if (panel.repeat && !hasScopedOverride(combinedScopedVars, panel.repeat)) {
       const repeatValues = variableValues[panel.repeat];
       if (repeatValues?.length) {
-        repeatValues.forEach((value, index) => {
-          const repeatScope = mergeScopedVars(combinedScopedVars, buildScopedVarOverride(panel.repeat!, value));
+        repeatValues.forEach((entry, index) => {
+          const repeatScope = mergeScopedVars(combinedScopedVars, buildScopedVarOverride(panel.repeat!, entry));
           const nextSuffix = appendCloneSuffix(cloneSuffix, index);
           result.push({
             ...panel,
@@ -548,7 +548,7 @@ const getDashboardTemplateVariableValues = (dashboard?: DashboardModel): Variabl
       continue;
     }
 
-    const normalized = normalizeVariableValues(variable.current?.value ?? variable.current?.text);
+    const normalized = normalizeVariableEntries(variable.current?.value, variable.current?.text);
     if (normalized.length) {
       values[variable.name] = normalized;
     }
@@ -566,7 +566,7 @@ const getTemplateVariableValues = (): VariableValueMap => {
       return;
     }
 
-    const normalized = normalizeVariableValues(variable.current?.value ?? variable.current?.text);
+    const normalized = normalizeVariableEntries(variable.current?.value, variable.current?.text);
 
     if (normalized.length) {
       result[variable.name] = normalized;
@@ -590,9 +590,9 @@ const mergeVariableValues = (base: VariableValueMap, overrides?: VariableValueMa
 const buildVariablePairs = (values: VariableValueMap): Array<{ key: string; value: string }> =>
   Object.entries(values)
     .map(([name, variableValues]) =>
-      variableValues.map((value) => ({
+      variableValues.map((entry) => ({
         key: `var-${name}`,
-        value,
+        value: entry.value,
       }))
     )
     .flat();
@@ -609,10 +609,11 @@ const buildScopedVarsFromValueMap = (values?: VariableValueMap): ScopedVars | un
     if (!variableValues?.length) {
       continue;
     }
-    const value = variableValues.length === 1 ? variableValues[0] : variableValues;
+    const valueList = variableValues.map((entry) => entry.value);
+    const textList = variableValues.map((entry) => entry.text ?? entry.value);
     scoped[name] = {
-      value,
-      text: Array.isArray(value) ? variableValues.join(', ') : value,
+      value: valueList.length === 1 ? valueList[0] : valueList,
+      text: textList.length === 1 ? textList[0] : textList.join(', '),
     };
     hasEntries = true;
   }
@@ -620,27 +621,62 @@ const buildScopedVarsFromValueMap = (values?: VariableValueMap): ScopedVars | un
   return hasEntries ? scoped : undefined;
 };
 
-const normalizeVariableValues = (value: any): string[] => {
-  const raw = Array.isArray(value) ? value : [value];
-  const normalized: string[] = [];
+const toArray = (input: any) => {
+  if (input === undefined || input === null) {
+    return [];
+  }
+  return Array.isArray(input) ? input : [input];
+};
 
-  for (const item of raw) {
-    if (item === undefined || item === null || item === '') {
+const normalizeVariableEntries = (value: any, text?: any): VariableValue[] => {
+  const values = toArray(value);
+  const texts = toArray(text);
+  const max = Math.max(values.length, texts.length);
+  const normalized: VariableValue[] = [];
+
+  for (let i = 0; i < max; i++) {
+    let source = values[i];
+    const textCandidate = texts[i];
+
+    if (source === undefined) {
+      source = textCandidate;
+    }
+
+    if (source === undefined || source === null || source === '') {
       continue;
     }
 
-    if (typeof item === 'object') {
-      if ('value' in item && item.value !== undefined && item.value !== null && item.value !== '') {
-        normalized.push(String(item.value));
+    if (typeof source === 'object') {
+      const candidateValue = (source as any).value;
+      const candidateText = (source as any).text;
+      if (candidateValue !== undefined && candidateValue !== null && candidateValue !== '') {
+        normalized.push({
+          value: String(candidateValue),
+          text:
+            candidateText !== undefined && candidateText !== null && candidateText !== ''
+              ? String(candidateText)
+              : textCandidate !== undefined && textCandidate !== null && textCandidate !== ''
+              ? String(textCandidate)
+              : undefined,
+        });
         continue;
       }
-      if ('text' in item && item.text !== undefined && item.text !== null && item.text !== '') {
-        normalized.push(String(item.text));
+      if (candidateText !== undefined && candidateText !== null && candidateText !== '') {
+        normalized.push({
+          value: String(candidateText),
+          text: String(candidateText),
+        });
         continue;
       }
     }
 
-    normalized.push(String(item));
+    normalized.push({
+      value: String(source),
+      text:
+        textCandidate !== undefined && textCandidate !== null && textCandidate !== ''
+          ? String(textCandidate)
+          : undefined,
+    });
   }
 
   return normalized;
@@ -665,7 +701,7 @@ const getScopedVariableOverrides = (scopedVars?: ScopedVars): VariableValueMap |
       continue;
     }
 
-    const normalized = normalizeVariableValues(scopedVar.value ?? scopedVar.text);
+    const normalized = normalizeVariableEntries(scopedVar.value, scopedVar.text);
 
     if (normalized.length) {
       overrides[key] = normalized;
@@ -693,10 +729,10 @@ const mergeScopedVars = (parent?: ScopedVars, child?: ScopedVars): ScopedVars | 
   };
 };
 
-const buildScopedVarOverride = (name: string, value: string): ScopedVars => ({
+const buildScopedVarOverride = (name: string, entry: VariableValue): ScopedVars => ({
   [name]: {
-    text: value,
-    value,
+    text: entry.text ?? entry.value,
+    value: entry.value,
   },
 });
 
@@ -768,7 +804,7 @@ const getPanelTitle = (
   const baseTitle = panel.title ?? fallbackTitle;
 
   try {
-    const replaced = templateSrv.replace(baseTitle, scopedContext ?? panel.scopedVars);
+    const replaced = templateSrv.replace(baseTitle, scopedContext ?? panel.scopedVars, 'text');
     return replaced?.trim() || baseTitle;
   } catch {
     return baseTitle;
@@ -900,7 +936,8 @@ export const __testables = {
   fitRectangle,
   mergeVariableValues,
   buildVariablePairs,
-  normalizeVariableValues,
+  normalizeVariableEntries,
+  getPanelTitle,
 };
 
 interface LogoAsset {

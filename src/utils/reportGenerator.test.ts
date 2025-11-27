@@ -35,7 +35,7 @@ describe('reportGenerator helpers', () => {
         ],
       };
 
-      const flattened = __testables.flattenPanels([row], { iterator: ['a', 'b'] });
+      const flattened = __testables.flattenPanels([row], { iterator: [{ value: 'a' }, { value: 'b' }] });
 
       expect(flattened).toHaveLength(2);
       expect(flattened.map((panel) => panel.renderId)).toEqual(['1clone1', '1clone2']);
@@ -84,8 +84,11 @@ describe('reportGenerator helpers', () => {
   describe('buildVariablePairs', () => {
     it('builds var-* key pairs for every variable value', () => {
       const pairs = __testables.buildVariablePairs({
-        region: ['us', 'eu'],
-        env: ['prod'],
+        region: [
+          { value: 'us', text: 'US' },
+          { value: 'eu', text: 'EU' },
+        ],
+        env: [{ value: 'prod' }],
       });
 
       expect(pairs).toEqual([
@@ -96,17 +99,19 @@ describe('reportGenerator helpers', () => {
     });
   });
 
-  describe('normalizeVariableValues', () => {
-    it('coerces mixed structures into strings', () => {
-      const values = __testables.normalizeVariableValues([
-        { value: '123' },
-        { text: 'abc' },
-        'raw',
-        42,
-        undefined,
-      ]);
+  describe('normalizeVariableEntries', () => {
+    it('coerces mixed structures into value/text pairs', () => {
+      const values = __testables.normalizeVariableEntries(
+        [{ value: '123' }, { text: 'abc' }, 'raw', 42, undefined],
+        ['text-123', 'text-abc']
+      );
 
-      expect(values).toEqual(['123', 'abc', 'raw', '42']);
+      expect(values).toEqual([
+        { value: '123', text: 'text-123' },
+        { value: 'abc', text: 'abc' },
+        { value: 'raw', text: undefined },
+        { value: '42', text: undefined },
+      ]);
     });
   });
 
@@ -132,8 +137,31 @@ describe('reportGenerator helpers', () => {
     });
   });
 
+  describe('getPanelTitle', () => {
+    it('prefers variable display text when rendering titles', () => {
+      const templateSrv = {
+        replace: jest.fn().mockReturnValue('Iterator Friendly'),
+      };
+      const scopedVars = {
+        iterator: {
+          value: ['1', '2'],
+          text: 'Friendly',
+        },
+      };
+
+      const title = __testables.getPanelTitle(
+        { id: 1, title: 'Iterator $iterator', type: 'stat' },
+        templateSrv as any,
+        scopedVars
+      );
+
+      expect(templateSrv.replace).toHaveBeenCalledWith('Iterator $iterator', scopedVars, 'text');
+      expect(title).toBe('Iterator Friendly');
+    });
+  });
+
   describe('real Grafana panel payloads', () => {
-    const variableMap = { iterator: ['1', '2'] };
+    const variableMap = { iterator: [{ value: '1', text: 'Iterator 1' }, { value: '2', text: 'Iterator 2' }] };
 
     const assertPanelPayload = (panels: PanelModel[]) => {
       const grouped = __testables.groupPanelsByRows(panels);
@@ -143,7 +171,9 @@ describe('reportGenerator helpers', () => {
       expect(repeated).toHaveLength(variableMap.iterator.length);
       expect(new Set(repeated.map((panel) => panel.renderId)).size).toBe(variableMap.iterator.length);
       expect(repeated.every((panel) => String(panel.renderId).includes('clone'))).toBe(true);
-      expect(repeated.map((panel) => panel.scopedVars?.iterator?.value)).toEqual(variableMap.iterator);
+      expect(repeated.map((panel) => panel.scopedVars?.iterator?.value)).toEqual(
+        variableMap.iterator.map((entry) => entry.value)
+      );
     };
 
     it('flattens Grafana 12.1 style panels with sequential rows', () => {
