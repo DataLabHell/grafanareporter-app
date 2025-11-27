@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-import { css } from '@emotion/css';
-import { AppPluginMeta, GrafanaTheme2, PluginConfigPageProps } from '@grafana/data';
+import { AppPluginMeta, PluginConfigPageProps } from '@grafana/data';
 import { getBackendSrv } from '@grafana/runtime';
 import { Button, Field, FieldSet, Input, RadioButtonGroup, Switch, useStyles2 } from '@grafana/ui';
 import React, { useState } from 'react';
 import { lastValueFrom } from 'rxjs';
+import { getAppConfigStyles } from 'styles/appConfigStyles';
 import {
   BrandingAlignment,
   BrandingPlacement,
@@ -166,7 +166,7 @@ const validateNumericFields = (state: LayoutFormState): NumericValidationResult 
 };
 
 const AppConfig = ({ plugin }: AppConfigProps) => {
-  const s = useStyles2(getStyles);
+  const s = useStyles2(getAppConfigStyles);
   const layout = resolveLayoutSettings(plugin.meta.jsonData?.layout);
   const [state, setState] = useState<LayoutFormState>({
     panelsPerPage: String(layout.panelsPerPage),
@@ -346,306 +346,243 @@ const AppConfig = ({ plugin }: AppConfigProps) => {
   };
 
   return (
-    <form onSubmit={onSubmit}>
-      <FieldSet label="Default report layout">
-        <Field label="Panels per page" description="Controls how many panels are rendered on each PDF page.">
-          <Input
-            type="number"
-            min={1}
-            step={1}
-            value={state.panelsPerPage}
-            onChange={onNumberChange('panelsPerPage')}
-            data-testid={testIds.appConfig.panelsPerPage}
-          />
-        </Field>
-
-        <Field label="Panel spacing (pt)" description="Vertical space between panels on the same page.">
-          <Input
-            type="number"
-            min={0}
-            step={1}
-            value={state.panelSpacing}
-            onChange={onNumberChange('panelSpacing')}
-            data-testid={testIds.appConfig.panelSpacing}
-          />
-        </Field>
-
-        <Field label="Orientation">
-          <RadioButtonGroup
-            options={orientationOptions}
-            value={state.orientation}
-            onChange={onOrientationChange}
-            data-testid={testIds.appConfig.orientation}
-          />
-        </Field>
-      </FieldSet>
-
-      <FieldSet label="Rendering dimensions">
-        <Field label="Panel render width (px)">
-          <Input
-            type="number"
-            min={100}
-            step={10}
-            value={state.renderWidth}
-            onChange={onNumberChange('renderWidth')}
-          />
-        </Field>
-        <Field label="Panel render height (px)">
-          <Input
-            type="number"
-            min={100}
-            step={10}
-            value={state.renderHeight}
-            onChange={onNumberChange('renderHeight')}
-          />
-        </Field>
-        <Field label="Page margin (pt)">
-          <Input
-            type="number"
-            min={0}
-            step={1}
-            value={state.pageMargin}
-            onChange={onNumberChange('pageMargin')}
-          />
-        </Field>
-      </FieldSet>
-
-      <FieldSet label="Footer, Header & branding">
-        <Field
-          label="Footer logo"
-          description="Paste an image URL or upload a file to display in the PDF."
-          data-testid={testIds.appConfig.footerLogo}
-        >
-          <div className={s.logoField}>
-            <div className={s.logoRow}>
-              <Input
-                placeholder="https://example.com/logo.png or data:image/png;base64..."
-                value={state.logoUrl}
-                onChange={handleLogoUrlChange}
-                data-testid={testIds.appConfig.footerLogo}
-              />
-              <label className={s.fileInput}>
-                <span>Select image</span>
-                <input type="file" accept="image/*" onChange={handleLogoFileChange} />
-              </label>
-              {state.logoUrl && (
-                <Button variant="secondary" type="button" onClick={handleClearLogo}>
-                  Clear
-                </Button>
-              )}
-            </div>
-            {state.logoUrl && (
-              <div className={s.logoPreview}>
-                <img src={state.logoUrl} alt="Logo preview" />
-              </div>
-            )}
-          </div>
-        </Field>
-
-        <Field label="Display logo">
-          <Switch
-            value={state.logoEnabled}
-            onChange={handleLogoEnabledToggle}
-            disabled={!state.logoUrl}
-            data-testid={testIds.appConfig.logoEnabled}
-          />
-        </Field>
-
-          {state.logoUrl && state.logoEnabled && (
-            <Field label="Logo placement">
-              <div className={s.inlineControls}>
-              <RadioButtonGroup
-                options={placementOptions.map((option) => ({
-                  ...option,
-                  disabled:
-                    state.showPageNumbers &&
-                    state.pageNumberPlacement === option.value &&
-                    state.pageNumberAlignment === state.logoAlignment,
-                }))}
-                value={state.logoPlacement}
-                onChange={handlePlacementChange('logoPlacement')}
-              />
-              <RadioButtonGroup
-                options={alignmentOptions.map((option) => ({
-                  ...option,
-                  disabled:
-                    state.showPageNumbers &&
-                    state.pageNumberPlacement === state.logoPlacement &&
-                    state.pageNumberAlignment === option.value,
-                }))}
-                value={state.logoAlignment}
-                onChange={handleAlignmentChange('logoAlignment')}
-              />
-            </div>
-          </Field>
-        )}
-
-        <FieldSet label="Branding dimensions">
-          <Field label="Logo max width (pt)">
+    <div className={s.container}>
+      <form onSubmit={onSubmit} className={s.form}>
+        <FieldSet label="Default report layout">
+          <Field label="Panels per page" description="Controls how many panels are rendered on each PDF page.">
             <Input
               type="number"
               min={1}
               step={1}
-              value={state.brandingLogoMaxWidth}
-              onChange={onNumberChange('brandingLogoMaxWidth')}
+              value={state.panelsPerPage}
+              onChange={onNumberChange('panelsPerPage')}
+              data-testid={testIds.appConfig.panelsPerPage}
             />
           </Field>
-          <Field label="Logo max height (pt)">
-            <Input
-              type="number"
-              min={1}
-              step={1}
-              value={state.brandingLogoMaxHeight}
-              onChange={onNumberChange('brandingLogoMaxHeight')}
-            />
-          </Field>
-          <Field label="Page number text height (pt)">
-            <Input
-              type="number"
-              min={1}
-              step={1}
-              value={state.brandingTextLineHeight}
-              onChange={onNumberChange('brandingTextLineHeight')}
-            />
-          </Field>
-          <Field label="Branding padding (pt)">
+
+          <Field label="Panel spacing (pt)" description="Vertical space between panels on the same page.">
             <Input
               type="number"
               min={0}
               step={1}
-              value={state.brandingSectionPadding}
-              onChange={onNumberChange('brandingSectionPadding')}
+              value={state.panelSpacing}
+              onChange={onNumberChange('panelSpacing')}
+              data-testid={testIds.appConfig.panelSpacing}
+            />
+          </Field>
+
+          <Field label="Orientation">
+            <RadioButtonGroup
+              options={orientationOptions}
+              value={state.orientation}
+              onChange={onOrientationChange}
+              data-testid={testIds.appConfig.orientation}
             />
           </Field>
         </FieldSet>
 
-        <Field label="Display panel titles" description="Toggle panel title labels in the PDF.">
-          <Switch
-            value={state.showPanelTitles}
-            onChange={handlePanelTitleToggle}
-            data-testid={testIds.appConfig.panelTitles}
-          />
-        </Field>
-        <Field label="Panel title font size (pt)">
-          <Input type="number" min={1} step={1} value={state.panelTitleFontSize} onChange={onNumberChange('panelTitleFontSize')} />
-        </Field>
+        <FieldSet label="Rendering dimensions">
+          <Field label="Panel render width (px)">
+            <Input
+              type="number"
+              min={100}
+              step={10}
+              value={state.renderWidth}
+              onChange={onNumberChange('renderWidth')}
+            />
+          </Field>
+          <Field label="Panel render height (px)">
+            <Input
+              type="number"
+              min={100}
+              step={10}
+              value={state.renderHeight}
+              onChange={onNumberChange('renderHeight')}
+            />
+          </Field>
+          <Field label="Page margin (pt)">
+            <Input type="number" min={0} step={1} value={state.pageMargin} onChange={onNumberChange('pageMargin')} />
+          </Field>
+        </FieldSet>
 
-        <Field label="Display page numbers" description={'Render "Page X of Y".'}>
-          <Switch
-            value={state.showPageNumbers}
-            onChange={handlePageNumberToggle}
-            data-testid={testIds.appConfig.pageNumbers}
-          />
-        </Field>
-
-        {state.showPageNumbers && (
-          <Field label="Page number placement">
-            <div className={s.inlineControls}>
-              <RadioButtonGroup
-                options={placementOptions.map((option) => ({
-                  ...option,
-                  disabled:
-                    state.logoUrl &&
-                    state.logoEnabled &&
-                    state.logoPlacement === option.value &&
-                    state.logoAlignment === state.pageNumberAlignment,
-                }))}
-                value={state.pageNumberPlacement}
-                onChange={handlePlacementChange('pageNumberPlacement')}
-              />
-              <RadioButtonGroup
-                options={alignmentOptions.map((option) => ({
-                  ...option,
-                  disabled:
-                    state.logoUrl &&
-                    state.logoEnabled &&
-                    state.logoPlacement === state.pageNumberPlacement &&
-                    state.logoAlignment === option.value,
-                }))}
-                value={state.pageNumberAlignment}
-                onChange={handleAlignmentChange('pageNumberAlignment')}
-              />
+        <FieldSet label="Footer, Header & branding">
+          <Field
+            label="Footer logo"
+            description="Paste an image URL or upload a file to display in the PDF."
+            data-testid={testIds.appConfig.footerLogo}
+          >
+            <div className={s.logoField}>
+              <div className={s.logoRow}>
+                <Input
+                  placeholder="https://example.com/logo.png or data:image/png;base64..."
+                  value={state.logoUrl}
+                  onChange={handleLogoUrlChange}
+                  data-testid={testIds.appConfig.footerLogo}
+                />
+                <label className={s.fileInput}>
+                  <span>Select image</span>
+                  <input type="file" accept="image/*" onChange={handleLogoFileChange} />
+                </label>
+                {state.logoUrl && (
+                  <Button variant="secondary" type="button" onClick={handleClearLogo}>
+                    Clear
+                  </Button>
+                )}
+              </div>
+              {state.logoUrl && (
+                <div className={s.logoPreview}>
+                  <img src={state.logoUrl} alt="Logo preview" />
+                </div>
+              )}
             </div>
           </Field>
-        )}
-      </FieldSet>
 
-      <div className={s.actions}>
-        {formError && <div className={s.error}>{formError}</div>}
-        <Button type="submit" data-testid={testIds.appConfig.submit} disabled={isSubmitDisabled}>
-          Save settings
-        </Button>
-      </div>
-    </form>
+          <Field label="Display logo">
+            <Switch
+              value={state.logoEnabled}
+              onChange={handleLogoEnabledToggle}
+              disabled={!state.logoUrl}
+              data-testid={testIds.appConfig.logoEnabled}
+            />
+          </Field>
+
+          {state.logoUrl && state.logoEnabled && (
+            <Field label="Logo placement">
+              <div className={s.inlineControls}>
+                <RadioButtonGroup
+                  options={placementOptions.map((option) => ({
+                    ...option,
+                    disabled:
+                      state.showPageNumbers &&
+                      state.pageNumberPlacement === option.value &&
+                      state.pageNumberAlignment === state.logoAlignment,
+                  }))}
+                  value={state.logoPlacement}
+                  onChange={handlePlacementChange('logoPlacement')}
+                />
+                <RadioButtonGroup
+                  options={alignmentOptions.map((option) => ({
+                    ...option,
+                    disabled:
+                      state.showPageNumbers &&
+                      state.pageNumberPlacement === state.logoPlacement &&
+                      state.pageNumberAlignment === option.value,
+                  }))}
+                  value={state.logoAlignment}
+                  onChange={handleAlignmentChange('logoAlignment')}
+                />
+              </div>
+            </Field>
+          )}
+
+          <FieldSet label="Branding dimensions">
+            <Field label="Logo max width (pt)">
+              <Input
+                type="number"
+                min={1}
+                step={1}
+                value={state.brandingLogoMaxWidth}
+                onChange={onNumberChange('brandingLogoMaxWidth')}
+              />
+            </Field>
+            <Field label="Logo max height (pt)">
+              <Input
+                type="number"
+                min={1}
+                step={1}
+                value={state.brandingLogoMaxHeight}
+                onChange={onNumberChange('brandingLogoMaxHeight')}
+              />
+            </Field>
+            <Field label="Page number text height (pt)">
+              <Input
+                type="number"
+                min={1}
+                step={1}
+                value={state.brandingTextLineHeight}
+                onChange={onNumberChange('brandingTextLineHeight')}
+              />
+            </Field>
+            <Field label="Branding padding (pt)">
+              <Input
+                type="number"
+                min={0}
+                step={1}
+                value={state.brandingSectionPadding}
+                onChange={onNumberChange('brandingSectionPadding')}
+              />
+            </Field>
+          </FieldSet>
+
+          <Field label="Display panel titles" description="Toggle panel title labels in the PDF.">
+            <Switch
+              value={state.showPanelTitles}
+              onChange={handlePanelTitleToggle}
+              data-testid={testIds.appConfig.panelTitles}
+            />
+          </Field>
+          <Field label="Panel title font size (pt)">
+            <Input
+              type="number"
+              min={1}
+              step={1}
+              value={state.panelTitleFontSize}
+              onChange={onNumberChange('panelTitleFontSize')}
+            />
+          </Field>
+
+          <Field label="Display page numbers" description={'Render "Page X of Y".'}>
+            <Switch
+              value={state.showPageNumbers}
+              onChange={handlePageNumberToggle}
+              data-testid={testIds.appConfig.pageNumbers}
+            />
+          </Field>
+
+          {state.showPageNumbers && (
+            <Field label="Page number placement">
+              <div className={s.inlineControls}>
+                <RadioButtonGroup
+                  options={placementOptions.map((option) => ({
+                    ...option,
+                    disabled:
+                      state.logoUrl &&
+                      state.logoEnabled &&
+                      state.logoPlacement === option.value &&
+                      state.logoAlignment === state.pageNumberAlignment,
+                  }))}
+                  value={state.pageNumberPlacement}
+                  onChange={handlePlacementChange('pageNumberPlacement')}
+                />
+                <RadioButtonGroup
+                  options={alignmentOptions.map((option) => ({
+                    ...option,
+                    disabled:
+                      state.logoUrl &&
+                      state.logoEnabled &&
+                      state.logoPlacement === state.pageNumberPlacement &&
+                      state.logoAlignment === option.value,
+                  }))}
+                  value={state.pageNumberAlignment}
+                  onChange={handleAlignmentChange('pageNumberAlignment')}
+                />
+              </div>
+            </Field>
+          )}
+        </FieldSet>
+
+        <div className={s.actions}>
+          {formError && <div className={s.error}>{formError}</div>}
+          <Button type="submit" data-testid={testIds.appConfig.submit} disabled={isSubmitDisabled}>
+            Save settings
+          </Button>
+        </div>
+      </form>
+    </div>
   );
 };
 
 export default AppConfig;
-
-const getStyles = (theme: GrafanaTheme2) => ({
-  actions: css`
-    margin-top: ${theme.spacing(3)};
-  `,
-  error: css`
-    color: ${theme.colors.error.text};
-    margin-bottom: ${theme.spacing(1)};
-  `,
-  logoField: css`
-    display: flex;
-    flex-direction: column;
-    gap: ${theme.spacing(1)};
-  `,
-  inlineControls: css`
-    display: flex;
-    flex-wrap: wrap;
-    gap: ${theme.spacing(1)};
-    align-items: center;
-  `,
-  logoRow: css`
-    display: flex;
-    flex-wrap: wrap;
-    gap: ${theme.spacing(1)};
-    align-items: center;
-
-    input[type='text'] {
-      flex: 1;
-      min-width: 220px;
-    }
-  `,
-  fileInput: css`
-    position: relative;
-    overflow: hidden;
-    display: inline-flex;
-    align-items: center;
-    padding: ${theme.spacing(1)} ${theme.spacing(1.5)};
-    border: 1px solid ${theme.colors.border.weak};
-    border-radius: ${theme.shape.radius.default};
-    cursor: pointer;
-    background: ${theme.colors.background.secondary};
-    font-size: ${theme.typography.bodySmall.fontSize};
-
-    input[type='file'] {
-      position: absolute;
-      inset: 0;
-      opacity: 0;
-      cursor: pointer;
-    }
-  `,
-  logoPreview: css`
-    margin-top: ${theme.spacing(1)};
-    padding: ${theme.spacing(1)};
-    border-radius: ${theme.shape.radius.default};
-    border: 1px dashed ${theme.colors.border.medium};
-    background: ${theme.colors.background.secondary};
-    max-width: 240px;
-
-    img {
-      max-width: 100%;
-      height: auto;
-      display: block;
-    }
-  `,
-});
 
 const updatePluginAndReload = async (pluginId: string, data: Partial<AppPluginMeta<ReporterPluginSettings>>) => {
   try {
