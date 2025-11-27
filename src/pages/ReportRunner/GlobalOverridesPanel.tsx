@@ -18,12 +18,16 @@ import { Button, Field, Input, RadioButtonGroup, Switch, useStyles2 } from '@gra
 import React from 'react';
 import { getAdvancedConfigStyles } from 'styles/advancedConfigStyles';
 import { BrandingAlignment, BrandingPlacement, LayoutSettings, ReportOrientation } from '../../types/reporting';
+import { LayoutDraft, LayoutDraftErrors, LayoutNumericField } from '../../utils/layoutValidation';
 
 interface Props {
   isOpen: boolean;
   onToggle: () => void;
   layout: LayoutSettings;
+  layoutDraft: LayoutDraft;
+  layoutErrors?: LayoutDraftErrors;
   onLayoutChange: (next: Partial<LayoutSettings>) => void;
+  onLayoutInputChange: (field: LayoutNumericField, value: string) => void;
 }
 
 const orientationOptions = [
@@ -42,22 +46,20 @@ const alignmentOptions = [
   { label: 'Right', value: 'right' as BrandingAlignment },
 ];
 
-export const GlobalOverridesPanel = ({ isOpen, onToggle, layout, onLayoutChange }: Props) => {
+export const GlobalOverridesPanel = ({
+  isOpen,
+  onToggle,
+  layout,
+  layoutDraft,
+  layoutErrors,
+  onLayoutChange,
+  onLayoutInputChange,
+}: Props) => {
   const styles = useStyles2(getAdvancedConfigStyles);
 
-  const handleNumericChange =
-    (key: keyof LayoutSettings, options: { min?: number } = {}) =>
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      const value = Number(event.target.value);
-      if (!Number.isFinite(value)) {
-        return;
-      }
-      const min = options.min ?? Number.NEGATIVE_INFINITY;
-      if (value < min) {
-        return;
-      }
-      onLayoutChange({ [key]: value } as Partial<LayoutSettings>);
-    };
+  const handleNumericInput = (key: LayoutNumericField) => (event: React.ChangeEvent<HTMLInputElement>) => {
+    onLayoutInputChange(key, event.target.value);
+  };
 
   const handleOrientationChange = (value: string) => {
     if (value === 'portrait' || value === 'landscape') {
@@ -115,53 +117,69 @@ export const GlobalOverridesPanel = ({ isOpen, onToggle, layout, onLayoutChange 
 
       {isOpen && (
         <div className={styles.overridePanel}>
-          <Field label="Panels per page">
+          <Field
+            label="Panels per page"
+            invalid={Boolean(layoutErrors?.panelsPerPage)}
+            error={layoutErrors?.panelsPerPage}
+          >
             <Input
               type="number"
               min={1}
               step={1}
-              value={layout.panelsPerPage}
-              onChange={handleNumericChange('panelsPerPage', { min: 1 })}
+              value={layoutDraft.panelsPerPage}
+              onChange={handleNumericInput('panelsPerPage')}
             />
           </Field>
 
-          <Field label="Panel spacing (pt)">
+          <Field
+            label="Panel spacing (pt)"
+            invalid={Boolean(layoutErrors?.panelSpacing)}
+            error={layoutErrors?.panelSpacing}
+          >
             <Input
               type="number"
               min={0}
               step={1}
-              value={layout.panelSpacing}
-              onChange={handleNumericChange('panelSpacing', { min: 0 })}
+              value={layoutDraft.panelSpacing}
+              onChange={handleNumericInput('panelSpacing')}
             />
           </Field>
 
-          <Field label="Panel render width (px)">
+          <Field
+            label="Panel render width (px)"
+            invalid={Boolean(layoutErrors?.renderWidth)}
+            error={layoutErrors?.renderWidth}
+          >
             <Input
               type="number"
               min={100}
               step={10}
-              value={layout.renderWidth}
-              onChange={handleNumericChange('renderWidth', { min: 100 })}
+              value={layoutDraft.renderWidth}
+              onChange={handleNumericInput('renderWidth')}
             />
           </Field>
 
-          <Field label="Panel render height (px)">
+          <Field
+            label="Panel render height (px)"
+            invalid={Boolean(layoutErrors?.renderHeight)}
+            error={layoutErrors?.renderHeight}
+          >
             <Input
               type="number"
               min={100}
               step={10}
-              value={layout.renderHeight}
-              onChange={handleNumericChange('renderHeight', { min: 100 })}
+              value={layoutDraft.renderHeight}
+              onChange={handleNumericInput('renderHeight')}
             />
           </Field>
 
-          <Field label="Page margin (pt)">
+          <Field label="Page margin (pt)" invalid={Boolean(layoutErrors?.pageMargin)} error={layoutErrors?.pageMargin}>
             <Input
               type="number"
               min={0}
               step={1}
-              value={layout.pageMargin}
-              onChange={handleNumericChange('pageMargin', { min: 0 })}
+              value={layoutDraft.pageMargin}
+              onChange={handleNumericInput('pageMargin')}
             />
           </Field>
 
@@ -176,13 +194,17 @@ export const GlobalOverridesPanel = ({ isOpen, onToggle, layout, onLayoutChange 
           <Field label="Panel titles">
             <Switch value={layout.showPanelTitles} onChange={handleLayoutToggle('showPanelTitles')} />
           </Field>
-          <Field label="Panel title font size (pt)">
+          <Field
+            label="Panel title font size (pt)"
+            invalid={Boolean(layoutErrors?.panelTitleFontSize)}
+            error={layoutErrors?.panelTitleFontSize}
+          >
             <Input
               type="number"
               min={1}
               step={1}
-              value={layout.panelTitleFontSize}
-              onChange={handleNumericChange('panelTitleFontSize', { min: 1 })}
+              value={layoutDraft.panelTitleFontSize}
+              onChange={handleNumericInput('panelTitleFontSize')}
             />
           </Field>
 
@@ -219,43 +241,59 @@ export const GlobalOverridesPanel = ({ isOpen, onToggle, layout, onLayoutChange 
             </Field>
           )}
 
-          <Field label="Logo max width (pt)">
+          <Field
+            label="Logo max width (pt)"
+            invalid={Boolean(layoutErrors?.brandingLogoMaxWidth)}
+            error={layoutErrors?.brandingLogoMaxWidth}
+          >
             <Input
               type="number"
               min={1}
               step={1}
-              value={layout.brandingLogoMaxWidth}
-              onChange={handleNumericChange('brandingLogoMaxWidth', { min: 1 })}
+              value={layoutDraft.brandingLogoMaxWidth}
+              onChange={handleNumericInput('brandingLogoMaxWidth')}
             />
           </Field>
 
-          <Field label="Logo max height (pt)">
+          <Field
+            label="Logo max height (pt)"
+            invalid={Boolean(layoutErrors?.brandingLogoMaxHeight)}
+            error={layoutErrors?.brandingLogoMaxHeight}
+          >
             <Input
               type="number"
               min={1}
               step={1}
-              value={layout.brandingLogoMaxHeight}
-              onChange={handleNumericChange('brandingLogoMaxHeight', { min: 1 })}
+              value={layoutDraft.brandingLogoMaxHeight}
+              onChange={handleNumericInput('brandingLogoMaxHeight')}
             />
           </Field>
 
-          <Field label="Page number text height (pt)">
+          <Field
+            label="Page number text height (pt)"
+            invalid={Boolean(layoutErrors?.brandingTextLineHeight)}
+            error={layoutErrors?.brandingTextLineHeight}
+          >
             <Input
               type="number"
               min={1}
               step={1}
-              value={layout.brandingTextLineHeight}
-              onChange={handleNumericChange('brandingTextLineHeight', { min: 1 })}
+              value={layoutDraft.brandingTextLineHeight}
+              onChange={handleNumericInput('brandingTextLineHeight')}
             />
           </Field>
 
-          <Field label="Branding padding (pt)">
+          <Field
+            label="Branding padding (pt)"
+            invalid={Boolean(layoutErrors?.brandingSectionPadding)}
+            error={layoutErrors?.brandingSectionPadding}
+          >
             <Input
               type="number"
               min={0}
               step={1}
-              value={layout.brandingSectionPadding}
-              onChange={handleNumericChange('brandingSectionPadding', { min: 0 })}
+              value={layoutDraft.brandingSectionPadding}
+              onChange={handleNumericInput('brandingSectionPadding')}
             />
           </Field>
 

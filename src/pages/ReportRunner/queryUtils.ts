@@ -17,12 +17,26 @@
 import { RawTimeRange } from '@grafana/data';
 import { DashboardTemplateVariable } from '../../types/grafana';
 import { BrandingAlignment, BrandingPlacement, LayoutSettings, VariableValueMap } from '../../types/reporting';
+import { LayoutNumericField } from '../../utils/layoutValidation';
 import { AdvancedSettingsSnapshot } from './types';
 
 export const DEFAULT_TIME_RANGE = {
   from: 'now-6h',
   to: 'now',
 } as const;
+
+const NUMERIC_PARAM_KEYS: Record<LayoutNumericField, string> = {
+  panelsPerPage: 'panelsPerPage',
+  panelSpacing: 'panelSpacing',
+  panelTitleFontSize: 'panelTitleFontSize',
+  renderWidth: 'renderWidth',
+  renderHeight: 'renderHeight',
+  pageMargin: 'pageMargin',
+  brandingLogoMaxWidth: 'brandingLogoMaxWidth',
+  brandingLogoMaxHeight: 'brandingLogoMaxHeight',
+  brandingTextLineHeight: 'brandingTextLineHeight',
+  brandingSectionPadding: 'brandingSectionPadding',
+};
 
 export const normalizeRawTimeInput = (
   value: RawTimeRange['from'] | undefined,
@@ -179,40 +193,31 @@ export const buildManualVariablesFromParams = (params: URLSearchParams): Variabl
   return Object.keys(manualVariables).length ? manualVariables : undefined;
 };
 
-export const parseLayoutOverrides = (params: URLSearchParams): LayoutSettings | undefined => {
+export interface ParsedLayoutOverrides {
+  layout?: LayoutSettings;
+  numericOverrides?: Partial<Record<LayoutNumericField, string>>;
+}
+
+export const parseLayoutOverrides = (params: URLSearchParams): ParsedLayoutOverrides => {
   const layout: LayoutSettings = {};
-  const panelsPerPageParam = params.get('panelsPerPage');
-  const panelSpacingParam = params.get('panelSpacing');
+  const numericOverrides: Partial<Record<LayoutNumericField, string>> = {};
   const orientation = params.get('orientation');
   const logo = params.get('logo');
   const pageNumbers = params.get('pageNumbers');
   const panelTitles = params.get('panelTitles');
-  const panelTitleFontSizeParam = params.get('panelTitleFontSize');
   const logoPlacement = params.get('logoPlacement');
   const logoAlignment = params.get('logoAlignment');
   const pagePlacement = params.get('pagePlacement');
   const pageAlignment = params.get('pageAlignment');
   const logoUrl = params.get('logoUrl');
-  const renderWidthParam = params.get('renderWidth');
-  const renderHeightParam = params.get('renderHeight');
-  const pageMarginParam = params.get('pageMargin');
-  const brandingLogoMaxWidthParam = params.get('brandingLogoMaxWidth');
-  const brandingLogoMaxHeightParam = params.get('brandingLogoMaxHeight');
-  const brandingTextLineHeightParam = params.get('brandingTextLineHeight');
-  const brandingSectionPaddingParam = params.get('brandingSectionPadding');
 
-  if (panelsPerPageParam !== null) {
-    const panelsPerPage = Number(panelsPerPageParam);
-    if (Number.isFinite(panelsPerPage) && panelsPerPage > 0) {
-      layout.panelsPerPage = panelsPerPage;
+  (Object.entries(NUMERIC_PARAM_KEYS) as Array<[LayoutNumericField, string]>).forEach(([field, key]) => {
+    const value = params.get(key);
+    if (value !== null) {
+      numericOverrides[field] = value;
     }
-  }
-  if (panelSpacingParam !== null) {
-    const panelSpacing = Number(panelSpacingParam);
-    if (Number.isFinite(panelSpacing) && panelSpacing >= 0) {
-      layout.panelSpacing = panelSpacing;
-    }
-  }
+  });
+
   if (orientation === 'portrait' || orientation === 'landscape') {
     layout.orientation = orientation;
   }
@@ -225,12 +230,6 @@ export const parseLayoutOverrides = (params: URLSearchParams): LayoutSettings | 
   }
   if (panelTitles === 'true' || panelTitles === 'false') {
     layout.showPanelTitles = panelTitles === 'true';
-  }
-  if (panelTitleFontSizeParam !== null) {
-    const value = Number(panelTitleFontSizeParam);
-    if (Number.isFinite(value) && value > 0) {
-      layout.panelTitleFontSize = value;
-    }
   }
   if (logoUrl) {
     layout.logoUrl = logoUrl;
@@ -247,50 +246,11 @@ export const parseLayoutOverrides = (params: URLSearchParams): LayoutSettings | 
   if (pageAlignment === 'left' || pageAlignment === 'center' || pageAlignment === 'right') {
     layout.pageNumberAlignment = pageAlignment as BrandingAlignment;
   }
-  if (renderWidthParam !== null) {
-    const renderWidth = Number(renderWidthParam);
-    if (Number.isFinite(renderWidth) && renderWidth > 0) {
-      layout.renderWidth = renderWidth;
-    }
-  }
-  if (renderHeightParam !== null) {
-    const renderHeight = Number(renderHeightParam);
-    if (Number.isFinite(renderHeight) && renderHeight > 0) {
-      layout.renderHeight = renderHeight;
-    }
-  }
-  if (pageMarginParam !== null) {
-    const pageMargin = Number(pageMarginParam);
-    if (Number.isFinite(pageMargin) && pageMargin >= 0) {
-      layout.pageMargin = pageMargin;
-    }
-  }
-  if (brandingLogoMaxWidthParam !== null) {
-    const value = Number(brandingLogoMaxWidthParam);
-    if (Number.isFinite(value) && value > 0) {
-      layout.brandingLogoMaxWidth = value;
-    }
-  }
-  if (brandingLogoMaxHeightParam !== null) {
-    const value = Number(brandingLogoMaxHeightParam);
-    if (Number.isFinite(value) && value > 0) {
-      layout.brandingLogoMaxHeight = value;
-    }
-  }
-  if (brandingTextLineHeightParam !== null) {
-    const value = Number(brandingTextLineHeightParam);
-    if (Number.isFinite(value) && value > 0) {
-      layout.brandingTextLineHeight = value;
-    }
-  }
-  if (brandingSectionPaddingParam !== null) {
-    const value = Number(brandingSectionPaddingParam);
-    if (Number.isFinite(value) && value >= 0) {
-      layout.brandingSectionPadding = value;
-    }
-  }
 
-  return Object.keys(layout).length ? layout : undefined;
+  return {
+    layout: Object.keys(layout).length ? layout : undefined,
+    numericOverrides: Object.keys(numericOverrides).length ? numericOverrides : undefined,
+  };
 };
 
 export const buildReportParams = (uid: string, settings: AdvancedSettingsSnapshot) => {
