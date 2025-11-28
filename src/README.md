@@ -36,23 +36,32 @@ Pass the `uid` parameter to run immediately when the page loads. Everything else
 
 ## Query parameters
 
-| Parameter       | Description                                           | Example                       |
-| --------------- | ----------------------------------------------------- | ----------------------------- |
-| `uid`           | Dashboard UID (required for auto-run).                | `uid=abcd1234`                |
-| `from`, `to`    | Time range (`now-6h`, epoch ms, ISO strings).         | `from=now-24h&to=now`         |
-| `tz`            | Timezone (`browser`, `utc`, `Europe/Vienna`).         | `tz=browser`                  |
-| `theme`         | `dark` or `light`. Defaults to user preference.       | `theme=light`                 |
-| `orientation`   | `portrait` or `landscape`.                            | `orientation=landscape`       |
-| `panelsPerPage` | Positive integer controlling the grid.                | `panelsPerPage=4`             |
-| `panelSpacing`  | Non-negative integer (points).                        | `panelSpacing=16`             |
-| `logo`          | `true`/`false`. Toggle logo.                          | `logo=false`                  |
-| `logoPlacement` | `header` or `footer`. Where the logo renders.         | `logoPlacement=header`        |
-| `logoAlignment` | `left`/`center`/`right`. Logo horizontal alignment.   | `logoAlignment=center`        |
-| `panelTitles`   | `true`/`false`. Show panel titles above screenshots.  | `panelTitles=false`           |
-| `pageNumbers`   | `true`/`false`. Show "Page X of Y".                   | `pageNumbers=true`            |
-| `pagePlacement` | `header` or `footer`. Where "Page X of Y" renders.    | `pagePlacement=footer`        |
-| `pageAlignment` | `left`/`center`/`right`. Alignment for "Page X of Y". | `pageAlignment=right`         |
-| `var-<name>`    | Repeat for every dashboard variable value.            | `var-region=us&var-region=eu` |
+| Parameter                | Description                                           | Example                       |
+| ------------------------ | ----------------------------------------------------- | ----------------------------- |
+| `uid`                    | Dashboard UID (required for auto-run).                | `uid=abcd1234`                |
+| `from`, `to`             | Time range (`now-6h`, epoch ms, ISO strings).         | `from=now-24h&to=now`         |
+| `tz`                     | Timezone (`browser`, `utc`, `Europe/Vienna`).         | `tz=browser`                  |
+| `theme`                  | `dark` or `light`. Defaults to user preference.       | `theme=light`                 |
+| `orientation`            | `portrait` or `landscape`.                            | `orientation=landscape`       |
+| `panelsPerPage`          | Positive integer controlling the grid.                | `panelsPerPage=4`             |
+| `panelSpacing`           | Non-negative integer (points).                        | `panelSpacing=16`             |
+| `panelTitleFontSize`     | Panel title font size in points.                      | `panelTitleFontSize=14`       |
+| `renderWidth`            | Panel render width in px (controls render call).      | `renderWidth=1600`            |
+| `renderHeight`           | Panel render height in px (controls render call).     | `renderHeight=900`            |
+| `pageMargin`             | Page margins in points.                               | `pageMargin=32`               |
+| `logo`                   | `true`/`false`. Toggle logo.                          | `logo=false`                  |
+| `logoUrl`                | Absolute/relative image URL or data URL for the logo. | `logoUrl=/public/plugins/...` |
+| `logoPlacement`          | `header` or `footer`. Where the logo renders.         | `logoPlacement=header`        |
+| `logoAlignment`          | `left`/`center`/`right`. Logo horizontal alignment.   | `logoAlignment=center`        |
+| `panelTitles`            | `true`/`false`. Show panel titles above screenshots.  | `panelTitles=false`           |
+| `pageNumbers`            | `true`/`false`. Show "Page X of Y".                   | `pageNumbers=true`            |
+| `pagePlacement`          | `header` or `footer`. Where "Page X of Y" renders.    | `pagePlacement=footer`        |
+| `pageAlignment`          | `left`/`center`/`right`. Alignment for "Page X of Y". | `pageAlignment=right`         |
+| `brandingLogoMaxWidth`   | Max logo width in points.                             | `brandingLogoMaxWidth=120`    |
+| `brandingLogoMaxHeight`  | Max logo height in points.                            | `brandingLogoMaxHeight=36`    |
+| `brandingTextLineHeight` | Line height for footer text/page numbers.             | `brandingTextLineHeight=12`   |
+| `brandingSectionPadding` | Padding inside header/footer area.                    | `brandingSectionPadding=6`    |
+| `var-<name>`             | Repeat for every dashboard variable value.            | `var-region=us&var-region=eu` |
 
 ## Configuration
 
@@ -77,17 +86,25 @@ apps:
     disabled: false
     jsonData:
       layout:
-        panelsPerPage: 2
-        panelSpacing: 16
-        orientation: 'portrait'
-        logoUrl: '/public/plugins/datalabhell-grafanareporter-app/img/dlh-logo.svg'
+        brandingLogoMaxHeight: 36
+        brandingLogoMaxWidth: 120
+        brandingSectionPadding: 6
+        brandingTextLineHeight: 12
+        logoAlignment: 'left'
         logoEnabled: true
         logoPlacement: 'footer'
-        logoAlignment: 'left'
-        showPanelTitles: true
-        showPageNumbers: true
-        pageNumberPlacement: 'footer'
+        logoUrl: '/public/plugins/datalabhell-grafanareporter-app/img/dlh-logo.svg'
+        orientation: 'portrait'
+        pageMargin: 32
         pageNumberAlignment: 'right'
+        pageNumberPlacement: 'footer'
+        panelSpacing: 16
+        panelsPerPage: 2
+        panelTitleFontSize: 14
+        renderHeight: 900
+        renderWidth: 1600
+        showPageNumbers: true
+        showPanelTitles: true
 ```
 
 Grafana writes that `jsonData` into the plugin settings, so users see those defaults immediately.
@@ -96,9 +113,16 @@ Grafana writes that `jsonData` into the plugin settings, so users see those defa
 
 Issues and feature requests are welcome via the project repository. Contributions (bug fixes, docs, or new layout features) are gladly reviewed. Open a pull request or start a discussion describing the use case.
 
-
 ## Planned features
 
 - Configurable parallell render calls to decrease report generation time
 - More customization options
 - Possibility to reset settings to originals
+- custom text fields e.g. "internal use only" info in footer/header
+- translation option for "page x of Y"
+
+## Current issues
+
+- AppConfig should be readonly when using provisioning
+- Logo override not working as expected
+- Variable text instead of value in panel title
