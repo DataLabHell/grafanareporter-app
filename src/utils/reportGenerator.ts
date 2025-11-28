@@ -34,6 +34,9 @@ import {
 
 type ProgressHandler = (message: string) => void;
 
+/**
+ * Manual dashboard inputs used when generating from the app page.
+ */
 interface ManualDashboardContext {
   dashboardUid?: string;
   dashboardTitle?: string;
@@ -43,6 +46,9 @@ interface ManualDashboardContext {
   layout?: LayoutSettings;
 }
 
+/**
+ * Derived dashboard context (UID, title, time range, variables) from either a panel or URL.
+ */
 interface DashboardContextResult {
   dashboardUid?: string;
   dashboardTitle?: string;
@@ -51,6 +57,11 @@ interface DashboardContextResult {
   variables?: VariableValueMap;
 }
 
+/**
+ * Options for orchestrating report generation.
+ * - `panelContext` is passed by Grafana when invoked from a panel extension.
+ * - `manualContext` is used by the app page when running against an explicit dashboard selection.
+ */
 interface GenerateReportOptions {
   panelContext?: PluginExtensionPanelContext;
   settings?: ReporterPluginSettings;
@@ -61,7 +72,10 @@ interface GenerateReportOptions {
 
 const DEFAULT_RAW_TIME_RANGE: RawTimeRange = { from: 'now-6h', to: 'now' };
 
-// Orchestrates the entire report flow: fetch dashboard, resolve variables, render panels via /render, then compose PDF.
+/**
+ * Orchestrates the report flow: fetch dashboard, resolve variables, render panels via /render, then compose a PDF.
+ * Emits progress messages via `onProgress` and returns the saved filename on success.
+ */
 export const generateDashboardReport = async ({
   panelContext,
   settings,
@@ -198,6 +212,7 @@ export const generateDashboardReport = async ({
     orientation: layoutConfig.orientation,
     unit: 'pt',
     format: 'a4',
+    compress: true,
   });
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
@@ -225,7 +240,7 @@ export const generateDashboardReport = async ({
       40,
       (pageHeight - pageMargin * 2 - headerHeight - footerHeight - panelSpacing * (gridRows - 1)) / gridRows
     );
-    pageItems.forEach((image, slotIndex) => {
+    for (const [slotIndex, image] of pageItems.entries()) {
       const rowIndex = Math.floor(slotIndex / activeColumns);
       const columnIndex = slotIndex % activeColumns;
       const xOffset = pageMargin + columnIndex * (slotWidth + panelSpacing);
@@ -245,8 +260,16 @@ export const generateDashboardReport = async ({
         pdf.setFontSize(panelTitleFontSize);
         pdf.text(image.title, xOffset, yOffset + titleOffset);
       }
-      pdf.addImage(image.dataUrl, 'PNG', imageX, imageY, imageWidth, imageHeight);
-    });
+      //const optimizedDataUrl = await downscaleImage(image.dataUrl, imageWidth, imageHeight);
+      pdf.addImage(
+        image.dataUrl, //optimizedDataUrl ?? image.dataUrl,
+        'PNG', //optimizedDataUrl ? 'JPEG' : 'PNG',
+        imageX,
+        imageY,
+        imageWidth,
+        imageHeight
+      );
+    }
 
     const pageNumber = Math.floor(pageIndex / panelsPerPage) + 1;
 
@@ -464,6 +487,43 @@ const blobToDataUrl = (blob: Blob) =>
     reader.onerror = () => reject(reader.error);
     reader.readAsDataURL(blob);
   });
+
+/**
+ * Downscale a data URL to the rendered slot size and encode as medium-quality JPEG.
+ * Returns null if downscaling fails or runs outside the browser (no document).
+ * Currently not needed as pdf comression is sufficient, but kept for future use.
+ */
+// const downscaleImage = async (dataUrl: string, targetWidth: number, targetHeight: number): Promise<string | null> => {
+//   if (typeof document === 'undefined') {
+//     return null;
+//   }
+
+//   const imageElement = new Image();
+
+//   const loadImage = () =>
+//     new Promise<HTMLImageElement>((resolve, reject) => {
+//       imageElement.onload = () => resolve(imageElement);
+//       imageElement.onerror = () => reject(new Error('Failed to load panel image for compression.'));
+//       imageElement.src = dataUrl;
+//     });
+
+//   try {
+//     const image = await loadImage();
+//     const canvas = document.createElement('canvas');
+//     canvas.width = Math.max(1, Math.round(targetWidth));
+//     canvas.height = Math.max(1, Math.round(targetHeight));
+//     const ctx = canvas.getContext('2d');
+//     if (!ctx) {
+//       return null;
+//     }
+//     ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+//     // Export as JPEG with medium quality to shrink PDF size.
+//     return canvas.toDataURL('image/jpeg', 0.75);
+//   } catch (error) {
+//     console.warn('Failed to downscale panel image', error);
+//     return null;
+//   }
+// };
 
 const slugify = (value: string) =>
   value
