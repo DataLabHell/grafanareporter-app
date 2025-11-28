@@ -34,6 +34,9 @@ import {
 
 type ProgressHandler = (message: string) => void;
 
+/**
+ * Manual dashboard inputs used when generating from the app page.
+ */
 interface ManualDashboardContext {
   dashboardUid?: string;
   dashboardTitle?: string;
@@ -43,6 +46,9 @@ interface ManualDashboardContext {
   layout?: LayoutSettings;
 }
 
+/**
+ * Derived dashboard context (UID, title, time range, variables) from either a panel or URL.
+ */
 interface DashboardContextResult {
   dashboardUid?: string;
   dashboardTitle?: string;
@@ -51,6 +57,11 @@ interface DashboardContextResult {
   variables?: VariableValueMap;
 }
 
+/**
+ * Options for orchestrating report generation.
+ * - `panelContext` is passed by Grafana when invoked from a panel extension.
+ * - `manualContext` is used by the app page when running against an explicit dashboard selection.
+ */
 interface GenerateReportOptions {
   panelContext?: PluginExtensionPanelContext;
   settings?: ReporterPluginSettings;
@@ -61,7 +72,10 @@ interface GenerateReportOptions {
 
 const DEFAULT_RAW_TIME_RANGE: RawTimeRange = { from: 'now-6h', to: 'now' };
 
-// Orchestrates the entire report flow: fetch dashboard, resolve variables, render panels via /render, then compose PDF.
+/**
+ * Orchestrates the report flow: fetch dashboard, resolve variables, render panels via /render, then compose a PDF.
+ * Emits progress messages via `onProgress` and returns the saved filename on success.
+ */
 export const generateDashboardReport = async ({
   panelContext,
   settings,
