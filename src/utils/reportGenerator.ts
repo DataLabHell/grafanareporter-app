@@ -198,6 +198,7 @@ export const generateDashboardReport = async ({
     orientation: layoutConfig.orientation,
     unit: 'pt',
     format: 'a4',
+    compress: true,
   });
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
@@ -225,7 +226,7 @@ export const generateDashboardReport = async ({
       40,
       (pageHeight - pageMargin * 2 - headerHeight - footerHeight - panelSpacing * (gridRows - 1)) / gridRows
     );
-    pageItems.forEach((image, slotIndex) => {
+    for (const [slotIndex, image] of pageItems.entries()) {
       const rowIndex = Math.floor(slotIndex / activeColumns);
       const columnIndex = slotIndex % activeColumns;
       const xOffset = pageMargin + columnIndex * (slotWidth + panelSpacing);
@@ -245,8 +246,10 @@ export const generateDashboardReport = async ({
         pdf.setFontSize(panelTitleFontSize);
         pdf.text(image.title, xOffset, yOffset + titleOffset);
       }
+
+      // we could implement additional downscaling of the PNG via canvas if needed
       pdf.addImage(image.dataUrl, 'PNG', imageX, imageY, imageWidth, imageHeight);
-    });
+    }
 
     const pageNumber = Math.floor(pageIndex / panelsPerPage) + 1;
 
