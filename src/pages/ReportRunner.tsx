@@ -14,20 +14,16 @@
  * limitations under the License.
  */
 
-import { TimeRange, dateMath, dateTime } from '@grafana/data';
+import { SelectableValue, TimeRange, dateMath, dateTime } from '@grafana/data';
 import { PluginPage, config, getBackendSrv } from '@grafana/runtime';
 import { TimeZone } from '@grafana/schema';
-import { Alert, Button, Combobox, ComboboxOption, IconButton, Spinner, useStyles2 } from '@grafana/ui';
+import { Alert, Button, IconButton, Select, Spinner, useStyles2 } from '@grafana/ui';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { getReportStyles } from 'styles/reportStyles';
 import { PLUGIN_BASE_URL, ROUTES } from '../constants';
 import pluginJson from '../plugin.json';
-import {
-  ensureReporterSettings,
-  getReporterSettings,
-  setReporterSettings,
-} from '../state/pluginSettings';
+import { ensureReporterSettings, getReporterSettings, setReporterSettings } from '../state/pluginSettings';
 import { LayoutSettings, ReportTheme, ReporterPluginSettings, resolveLayoutSettings } from '../types/reporting';
 import {
   LAYOUT_NUMERIC_CONSTRAINTS,
@@ -51,7 +47,12 @@ import {
   parseLayoutOverrides,
   parseVariablesText,
 } from './ReportRunner/queryUtils';
-import { AdvancedSettingsSnapshot, DashboardDetailsResponse, DashboardSearchHit, ManualRunContext } from './ReportRunner/types';
+import {
+  AdvancedSettingsSnapshot,
+  DashboardDetailsResponse,
+  DashboardSearchHit,
+  ManualRunContext,
+} from './ReportRunner/types';
 
 const LAYOUT_ERROR_MESSAGE = 'Fix the highlighted layout overrides before generating the report.';
 
@@ -351,7 +352,7 @@ const ReportRunner = () => {
     lastAppliedQueryRef.current = currentQuery;
   }, [location.search, layoutDefaults, pluginSettingsState, runReport, settingsReady, applyLayoutErrors]);
 
-  const dashboardsOptions = useMemo<Array<ComboboxOption<string>>>(
+  const dashboardsOptions = useMemo<Array<SelectableValue<string>>>(
     () =>
       dashboards.map((item) => ({
         label: item.folderTitle ? `${item.folderTitle} / ${item.title}` : item.title,
@@ -359,15 +360,15 @@ const ReportRunner = () => {
       })),
     [dashboards]
   );
-  const themeOptions = useMemo<Array<ComboboxOption<ReportTheme>>>(
+  const themeOptions = useMemo<Array<SelectableValue<ReportTheme>>>(
     () => [
       { label: 'Dark', value: 'dark' as ReportTheme },
       { label: 'Light', value: 'light' as ReportTheme },
     ],
     []
   );
-  const timeZoneOptions = useMemo<Array<ComboboxOption<TimeZone | 'browser'>>>(() => {
-    const base: Array<ComboboxOption<TimeZone | 'browser'>> = [
+  const timeZoneOptions = useMemo<Array<SelectableValue<TimeZone | 'browser'>>>(() => {
+    const base: Array<SelectableValue<TimeZone | 'browser'>> = [
       { label: 'Browser (local)', value: 'browser' },
       { label: 'UTC', value: 'utc' as TimeZone },
     ];
@@ -387,17 +388,18 @@ const ReportRunner = () => {
     return base;
   }, [advancedSettings.timezone]);
 
-  const selectValue = selectedUid ?? null;
+  const selectedDashboardOption = useMemo(
+    () => dashboardsOptions.find((option) => option.value === selectedUid) ?? null,
+    [dashboardsOptions, selectedUid]
+  );
   const disableControls = isGenerating;
   const timePickerValue = useMemo<TimeRange>(() => {
     const parsedFrom =
-      dateMath.toDateTime(advancedSettings.range.from, {}) ??
-      dateMath.toDateTime(DEFAULT_TIME_RANGE.from, {}) ??
+      dateMath.parse(advancedSettings.range.from, false) ??
+      dateMath.parse(DEFAULT_TIME_RANGE.from, false) ??
       dateTime();
     const parsedTo =
-      dateMath.toDateTime(advancedSettings.range.to, {}) ??
-      dateMath.toDateTime(DEFAULT_TIME_RANGE.to, {}) ??
-      dateTime();
+      dateMath.parse(advancedSettings.range.to, true) ?? dateMath.parse(DEFAULT_TIME_RANGE.to, true) ?? dateTime();
     return {
       from: parsedFrom,
       to: parsedTo,
@@ -612,9 +614,9 @@ const ReportRunner = () => {
         <div className={styles.controls}>
           <div className={styles.controlGroup}>
             <label className={styles.label}>Dashboard</label>
-            <Combobox
+            <Select
               options={dashboardsOptions}
-              value={selectValue}
+              value={selectedDashboardOption}
               placeholder={isFetchingDashboards ? 'Loading dashboards…' : 'Select a dashboard'}
               disabled={disableControls || isFetchingDashboards}
               isClearable

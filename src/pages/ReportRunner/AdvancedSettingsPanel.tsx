@@ -14,15 +14,14 @@
  * limitations under the License.
  */
 
-import { TimeRange } from '@grafana/data';
+import { SelectableValue, TimeRange } from '@grafana/data';
 import { TimeZone } from '@grafana/schema';
 import {
   Button,
   ClipboardButton,
-  Combobox,
-  ComboboxOption,
   Field,
   RadioButtonGroup,
+  Select,
   TextArea,
   TimeRangeInput,
   useStyles2,
@@ -37,10 +36,10 @@ interface Props {
   isOpen: boolean;
   timePickerValue: TimeRange;
   onTimeRangeChange: (range: TimeRange) => void;
-  timezoneOptions: Array<ComboboxOption<TimeZone | 'browser'>>;
+  timezoneOptions: Array<SelectableValue<TimeZone | 'browser'>>;
   selectedTimezone: TimeZone | 'browser';
   onTimezoneChange: (value: TimeZone | 'browser') => void;
-  themeOptions: Array<ComboboxOption<ReportTheme>>;
+  themeOptions: Array<SelectableValue<ReportTheme>>;
   selectedTheme: ReportTheme;
   onThemeChange: (value: ReportTheme) => void;
   variablesText: string;
@@ -87,7 +86,7 @@ export const AdvancedSettingsPanel = ({
     }
   };
 
-  const handleTimezoneChange = (option: ComboboxOption<TimeZone | 'browser'> | null) => {
+  const handleTimezoneChange = (option: SelectableValue<TimeZone | 'browser'> | null) => {
     onTimezoneChange((option?.value as TimeZone | 'browser') ?? 'browser');
   };
 
@@ -122,7 +121,7 @@ export const AdvancedSettingsPanel = ({
           </Field>
 
           <Field label="Timezone">
-            <Combobox options={timezoneOptions} value={selectedTimezone} onChange={handleTimezoneChange} />
+            <Select options={timezoneOptions} value={selectedTimezone} onChange={handleTimezoneChange} />
           </Field>
 
           <Field label="Rendered panel theme">

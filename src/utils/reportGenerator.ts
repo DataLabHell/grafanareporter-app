@@ -460,7 +460,7 @@ const convertTimeValue = (value: RawTimeRange['from'], roundUp: boolean, timeZon
       return numeric;
     }
 
-    const parsed = dateMath.toDateTime(value, { roundUp, timezone: timeZone });
+    const parsed = dateMath.parse(value, roundUp, timeZone);
     return parsed?.valueOf();
   }
 
