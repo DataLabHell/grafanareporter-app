@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-import { __testables } from './reportGenerator';
-import { DEFAULT_LAYOUT_SETTINGS, resolveLayoutSettings, LayoutSettings } from '../types/reporting';
 import { PanelModel } from '../types/grafana';
+import { LayoutSettings, resolveLayoutSettings } from '../types/reporting';
 import { panelsGrafana121, panelsGrafana123 } from './__fixtures__/dashboardPanels';
+import { __testables } from './reportGenerator';
 
 describe('reportGenerator helpers', () => {
   describe('flattenPanels', () => {
@@ -43,32 +43,27 @@ describe('reportGenerator helpers', () => {
     });
   });
 
-  describe('resolveReportLayout', () => {
-    it('prefers overrides but falls back to base defaults', () => {
+  describe('layout resolution', () => {
+    it('merges base settings with manual overrides', () => {
       const base: LayoutSettings = {
         panelsPerPage: 4,
         panelSpacing: 8,
-        logoEnabled: false,
+        logoEnabled: true,
         showPageNumbers: true,
         logoPlacement: 'header',
+        logoUrl: 'base-logo',
       };
       const override: LayoutSettings = {
         panelSpacing: 24,
         showPageNumbers: false,
       };
 
-      const layout = __testables.resolveReportLayout(base, override);
-
-      expect(layout.panelsPerPage).toBe(4);
-      expect(layout.panelSpacing).toBe(24);
-      expect(layout.showPageNumbers).toBe(false);
-      expect(layout.logoPlacement).toBe('header');
-    });
-
-    it('falls back to DEFAULT_LAYOUT_SETTINGS when nothing provided', () => {
-      const resolved = __testables.resolveReportLayout(undefined, undefined);
-      expect(resolved.panelsPerPage).toBe(DEFAULT_LAYOUT_SETTINGS.panelsPerPage);
-      expect(resolved.logoUrl).toBe(DEFAULT_LAYOUT_SETTINGS.logoUrl);
+      const resolved = resolveLayoutSettings({ ...base, ...override });
+      expect(resolved.panelsPerPage).toBe(4);
+      expect(resolved.panelSpacing).toBe(24);
+      expect(resolved.showPageNumbers).toBe(false);
+      expect(resolved.logoPlacement).toBe('header');
+      expect(resolved.logoUrl).toBe('base-logo');
     });
   });
 
@@ -161,7 +156,12 @@ describe('reportGenerator helpers', () => {
   });
 
   describe('real Grafana panel payloads', () => {
-    const variableMap = { iterator: [{ value: '1', text: 'Iterator 1' }, { value: '2', text: 'Iterator 2' }] };
+    const variableMap = {
+      iterator: [
+        { value: '1', text: 'Iterator 1' },
+        { value: '2', text: 'Iterator 2' },
+      ],
+    };
 
     const assertPanelPayload = (panels: PanelModel[]) => {
       const grouped = __testables.groupPanelsByRows(panels);

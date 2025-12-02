@@ -18,7 +18,7 @@ import { AppPlugin, type AppRootProps } from '@grafana/data';
 import { LoadingPlaceholder } from '@grafana/ui';
 import React, { Suspense, lazy } from 'react';
 import type { AppConfigProps } from './components/AppConfig/AppConfig';
-import { setReporterSettings } from './state/pluginSettings';
+import { setProvisionedSettings, setReporterSettings } from './state/pluginSettings';
 import { ReporterPluginSettings } from './types/reporting';
 
 const LazyApp = lazy(() => import('./components/App/App'));
@@ -49,5 +49,6 @@ const originalInit = plugin.init.bind(plugin);
 
 plugin.init = (meta) => {
   originalInit(meta);
+  setProvisionedSettings(meta.jsonData);
   setReporterSettings(meta.jsonData);
 };
