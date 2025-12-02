@@ -16,25 +16,57 @@
 
 import { DEFAULT_LAYOUT_SETTINGS, ReporterPluginSettings } from '../types/reporting';
 
-let currentSettings: ReporterPluginSettings | undefined;
+let provisionedSettings: ReporterPluginSettings | undefined;
+let globalSettings: ReporterPluginSettings | undefined;
 
 const cloneDefaultLayout = () => ({ ...DEFAULT_LAYOUT_SETTINGS });
 
-export const ensureReporterSettings = (settings?: ReporterPluginSettings | null): ReporterPluginSettings => {
-  if (settings && Object.keys(settings).length > 0) {
-    return {
-      ...settings,
-      layout: settings.layout ?? cloneDefaultLayout(),
-    };
+const normalizeSettings = (settings?: ReporterPluginSettings | null): ReporterPluginSettings | undefined => {
+  if (!settings || Object.keys(settings).length === 0) {
+    return undefined;
   }
 
   return {
-    layout: cloneDefaultLayout(),
+    ...settings,
+    layout: settings.layout ? { ...settings.layout } : undefined,
   };
 };
 
-export const setReporterSettings = (settings?: ReporterPluginSettings | null) => {
-  currentSettings = ensureReporterSettings(settings);
+const mergeSettings = (...layers: Array<ReporterPluginSettings | undefined>): ReporterPluginSettings => {
+  const merged: ReporterPluginSettings = { layout: cloneDefaultLayout() };
+
+  for (const layer of layers) {
+    if (!layer) {
+      continue;
+    }
+
+    if (layer.themePreference !== undefined) {
+      merged.themePreference = layer.themePreference;
+    }
+
+    if (layer.layout) {
+      merged.layout = {
+        ...merged.layout,
+        ...layer.layout,
+      };
+    }
+  }
+
+  return merged;
 };
 
-export const getReporterSettings = () => currentSettings ?? ensureReporterSettings(undefined);
+export const ensureReporterSettings = (settings?: ReporterPluginSettings | null): ReporterPluginSettings =>
+  normalizeSettings(settings) ?? {};
+
+export const setProvisionedSettings = (settings?: ReporterPluginSettings | null) => {
+  provisionedSettings = normalizeSettings(settings);
+};
+
+export const setReporterSettings = (settings?: ReporterPluginSettings | null) => {
+  globalSettings = normalizeSettings(settings);
+};
+
+export const getProvisionedSettings = () => provisionedSettings;
+
+export const getReporterSettings = (overrides?: ReporterPluginSettings | null) =>
+  mergeSettings(provisionedSettings, globalSettings, normalizeSettings(overrides));

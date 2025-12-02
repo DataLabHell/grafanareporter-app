@@ -21,14 +21,13 @@ import { ROUTES } from '../../constants';
 import { ReporterPluginSettings } from '../../types/reporting';
 const ReportRunner = React.lazy(() => import('../../pages/ReportRunner'));
 
-function App(props: AppRootProps<ReporterPluginSettings>) {
-  const pluginSettings = props.meta?.jsonData;
+function App(_props: AppRootProps<ReporterPluginSettings>) {
   return (
     <Routes>
-      <Route path={ROUTES.Report} element={<ReportRunner settings={pluginSettings} />} />
+      <Route path={ROUTES.Report} element={<ReportRunner />} />
 
       {/* Default route */}
-      <Route path="*" element={<ReportRunner settings={pluginSettings} />} />
+      <Route path="*" element={<ReportRunner />} />
     </Routes>
   );
 }

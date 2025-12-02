@@ -43,7 +43,6 @@ interface ManualDashboardContext {
   timeRange?: RawTimeRange;
   timeZone?: TimeZone;
   variables?: VariableValueMap;
-  layout?: LayoutSettings;
 }
 
 /**
@@ -87,7 +86,6 @@ export const generateDashboardReport = async ({
   const notify = (message: string) => onProgress?.(message);
   const backendSrv = getBackendSrv();
   const templateSrv = getTemplateSrv();
-  const manualLayout = manualContext?.layout;
   const {
     dashboardUid,
     dashboardTitle: fallbackTitle,
@@ -128,9 +126,8 @@ export const generateDashboardReport = async ({
     throw new Error('Could not determine the current time range.');
   }
 
-  // Layout preferences can come from plugin defaults (AppConfig) or manual overrides (advanced settings/query params).
-  // resolveReportLayout merges them and falls back to DEFAULT_LAYOUT_SETTINGS if nothing else is defined.
-  const layoutConfig = resolveReportLayout(settings?.layout, manualLayout);
+  // Layout preferences come from the resolved plugin settings. Manual overrides are merged upstream.
+  const layoutConfig = resolveLayoutSettings(settings?.layout);
   const renderWidth = layoutConfig.renderWidth;
   const renderHeight = layoutConfig.renderHeight;
   const pageMargin = layoutConfig.pageMargin;
@@ -753,12 +750,6 @@ const buildScopedVarOverride = (name: string, entry: VariableValue): ScopedVars 
   },
 });
 
-const resolveReportLayout = (base?: LayoutSettings, override?: LayoutSettings) =>
-  resolveLayoutSettings({
-    ...base,
-    ...override,
-  });
-
 const determineGridColumns = (slotsPerPage: number) => {
   if (slotsPerPage >= 4) {
     return 2;
@@ -938,7 +929,6 @@ const withAbort = async <T>(promise: Promise<T>, signal?: AbortSignal): Promise<
 export const __testables = {
   flattenPanels,
   groupPanelsByRows,
-  resolveReportLayout,
   determineGridColumns,
   getBrandingReservedHeight,
   fitRectangle,

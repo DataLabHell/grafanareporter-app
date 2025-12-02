@@ -23,7 +23,11 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { getReportStyles } from 'styles/reportStyles';
 import { PLUGIN_BASE_URL, ROUTES } from '../constants';
 import pluginJson from '../plugin.json';
-import { ensureReporterSettings, getReporterSettings, setReporterSettings } from '../state/pluginSettings';
+import {
+  ensureReporterSettings,
+  getReporterSettings,
+  setReporterSettings,
+} from '../state/pluginSettings';
 import { LayoutSettings, ReportTheme, ReporterPluginSettings, resolveLayoutSettings } from '../types/reporting';
 import {
   LAYOUT_NUMERIC_CONSTRAINTS,
@@ -47,35 +51,17 @@ import {
   parseLayoutOverrides,
   parseVariablesText,
 } from './ReportRunner/queryUtils';
-import {
-  AdvancedSettingsSnapshot,
-  DashboardDetailsResponse,
-  DashboardSearchHit,
-  ManualRunContext,
-  ReportRunnerProps,
-} from './ReportRunner/types';
+import { AdvancedSettingsSnapshot, DashboardDetailsResponse, DashboardSearchHit, ManualRunContext } from './ReportRunner/types';
 
 const LAYOUT_ERROR_MESSAGE = 'Fix the highlighted layout overrides before generating the report.';
 
 const userThemePreference: ReportTheme = config.bootData?.user?.theme === 'light' ? 'light' : 'dark';
 
-const ReportRunner = ({ settings }: ReportRunnerProps) => {
-  const initialSettings = ensureReporterSettings(settings ?? getReporterSettings());
-  const [pluginSettingsState, setPluginSettingsState] = useState<ReporterPluginSettings>(initialSettings);
-  const [settingsReady, setSettingsReady] = useState<boolean>(Boolean(settings && Object.keys(settings).length));
+const ReportRunner = () => {
+  const [pluginSettingsState, setPluginSettingsState] = useState<ReporterPluginSettings>(() => getReporterSettings());
+  const [settingsReady, setSettingsReady] = useState<boolean>(false);
 
   useEffect(() => {
-    const next = ensureReporterSettings(settings ?? getReporterSettings());
-    setPluginSettingsState(next);
-    setReporterSettings(next);
-    setSettingsReady(Boolean(settings && Object.keys(settings).length));
-  }, [settings]);
-
-  useEffect(() => {
-    if (settings && Object.keys(settings).length) {
-      return;
-    }
-
     let cancelled = false;
 
     const loadSettings = async () => {
@@ -83,14 +69,15 @@ const ReportRunner = ({ settings }: ReportRunnerProps) => {
         const response = await getBackendSrv().get<{ jsonData?: ReporterPluginSettings }>(
           `/api/plugins/${pluginJson.id}/settings`
         );
-        if (!cancelled) {
-          const normalized = ensureReporterSettings(response?.jsonData);
-          setPluginSettingsState(normalized);
-          setReporterSettings(normalized);
-          setSettingsReady(true);
+        if (cancelled) {
+          return;
         }
+        const normalized = ensureReporterSettings(response?.jsonData);
+        setReporterSettings(normalized);
+        setPluginSettingsState(getReporterSettings());
       } catch (error) {
         console.warn('Failed to load reporter settings', error);
+      } finally {
         if (!cancelled) {
           setSettingsReady(true);
         }
@@ -102,7 +89,7 @@ const ReportRunner = ({ settings }: ReportRunnerProps) => {
     return () => {
       cancelled = true;
     };
-  }, [settings]);
+  }, []);
 
   const layoutDefaults = useMemo(() => resolveLayoutSettings(pluginSettingsState?.layout), [pluginSettingsState]);
   const location = useLocation();
@@ -214,14 +201,17 @@ const ReportRunner = ({ settings }: ReportRunnerProps) => {
   }, []);
 
   const runReport = useCallback(
-    (context: ManualRunContext, themeOverride?: ReportTheme) => {
+    (context: ManualRunContext, layoutOverride?: LayoutSettings, themeOverride?: ReportTheme) => {
       if (!context.dashboardUid) {
         setStatus('error');
         setError('Please select a dashboard before generating the report.');
         return;
       }
 
-      abortControllerRef.current?.abort();
+      // Cancel any previous run only if something is currently running.
+      if (isGenerating && abortControllerRef.current && !abortControllerRef.current.signal.aborted) {
+        abortControllerRef.current.abort();
+      }
       const controller = new AbortController();
       abortControllerRef.current = controller;
 
@@ -231,7 +221,11 @@ const ReportRunner = ({ settings }: ReportRunnerProps) => {
       setIsGenerating(true);
 
       const baseSettings = pluginSettingsState ?? getReporterSettings();
-      const settings: ReporterPluginSettings = { ...(baseSettings ?? {}) };
+      const mergedLayout = resolveLayoutSettings({
+        ...(baseSettings?.layout ?? {}),
+        ...(layoutOverride ?? {}),
+      });
+      const settings: ReporterPluginSettings = { ...(baseSettings ?? {}), layout: mergedLayout };
       if (themeOverride) {
         settings.themePreference = themeOverride;
       }
@@ -244,7 +238,6 @@ const ReportRunner = ({ settings }: ReportRunnerProps) => {
           timeRange: coerceRawRange(context.timeRange),
           timeZone: context.timeZone ?? 'browser',
           variables: context.variables,
-          layout: context.layout,
         },
         signal: controller.signal,
       })
@@ -265,7 +258,7 @@ const ReportRunner = ({ settings }: ReportRunnerProps) => {
           }
         });
     },
-    [pluginSettingsState]
+    [pluginSettingsState, isGenerating]
   );
 
   useEffect(() => {
@@ -273,8 +266,9 @@ const ReportRunner = ({ settings }: ReportRunnerProps) => {
       return;
     }
 
-    const currentQuery = location.search ?? '';
-    if (!currentQuery) {
+    const rawSearch = location.search ?? '';
+    const currentQuery = rawSearch.startsWith('?') ? rawSearch.slice(1) : rawSearch;
+    if (!rawSearch) {
       lastAppliedQueryRef.current = '';
       return;
     }
@@ -296,10 +290,14 @@ const ReportRunner = ({ settings }: ReportRunnerProps) => {
     const title = params.get('title') ?? undefined;
     const themeParam = params.get('theme') as ReportTheme | null;
     const theme = themeParam && (themeParam === 'light' || themeParam === 'dark') ? themeParam : undefined;
-    const { layout: layoutOverride, numericOverrides } = parseLayoutOverrides(params);
+    const { layout: parsedLayoutOverride, numericOverrides } = parseLayoutOverrides(params);
     const manualVariables = buildManualVariablesFromParams(params);
+    // Mark this query as processed so the auto-run effect does not trigger a second run on re-render.
+    lastAppliedQueryRef.current = currentQuery;
 
-    const normalizedLayout = layoutOverride ? resolveLayoutSettings(layoutOverride) : layoutDefaults;
+    const normalizedLayout = parsedLayoutOverride
+      ? resolveLayoutSettings({ ...layoutDefaults, ...parsedLayoutOverride })
+      : layoutDefaults;
     const draftFromLayout = createLayoutDraft(normalizedLayout);
     const mergedDraft = numericOverrides ? { ...draftFromLayout, ...numericOverrides } : draftFromLayout;
     setLayoutDraft(mergedDraft);
@@ -313,7 +311,6 @@ const ReportRunner = ({ settings }: ReportRunnerProps) => {
       timeRange: from || to ? { from: from ?? DEFAULT_TIME_RANGE.from, to: to ?? DEFAULT_TIME_RANGE.to } : undefined,
       timeZone: tz,
       variables: manualVariables,
-      layout: undefined,
     };
     const normalizedRange = coerceRawRange(manualContext.timeRange);
     const normalizedContext: ManualRunContext = {
@@ -322,7 +319,7 @@ const ReportRunner = ({ settings }: ReportRunnerProps) => {
     };
 
     const validation = validateLayoutDraft(mergedDraft);
-    const hasOverrides = Boolean(layoutOverride) || Boolean(numericOverrides);
+    const hasOverrides = Boolean(parsedLayoutOverride) || Boolean(numericOverrides);
     setHasLayoutOverride(hasOverrides);
 
     if (validation.errors) {
@@ -348,12 +345,9 @@ const ReportRunner = ({ settings }: ReportRunnerProps) => {
       variablesText: formatVariablesText(normalizedContext.variables),
       layout: layoutForRun,
     });
-    const contextWithLayout: ManualRunContext = {
-      ...normalizedContext,
-      layout: hasOverrides ? layoutForRun : undefined,
-    };
+    const layoutOverrideForRun = hasOverrides ? layoutForRun : undefined;
 
-    runReport(contextWithLayout, theme ?? userThemePreference);
+    runReport(normalizedContext, layoutOverrideForRun, theme ?? userThemePreference);
     lastAppliedQueryRef.current = currentQuery;
   }, [location.search, layoutDefaults, pluginSettingsState, runReport, settingsReady, applyLayoutErrors]);
 
@@ -535,6 +529,10 @@ const ReportRunner = ({ settings }: ReportRunnerProps) => {
   }, [selectedUid, prefillFromDashboard, layoutDefaults, applyLayoutErrors]);
 
   const onManualGenerate = () => {
+    if (isGenerating) {
+      return;
+    }
+
     if (!selectedUid) {
       setError('Please select a dashboard before generating the report.');
       return;
@@ -560,9 +558,16 @@ const ReportRunner = ({ settings }: ReportRunnerProps) => {
     const currentQuery = location.search.startsWith('?') ? location.search.slice(1) : location.search;
 
     if (nextQuery !== currentQuery) {
+      // Update URL to reflect overrides; let the auto-run effect handle the run once.
       navigate(`${PLUGIN_BASE_URL}/${ROUTES.Report}?${nextQuery}`, { replace: true });
       return;
     }
+
+    // Immediately reflect a new generation attempt.
+    setStatus('working');
+    setMessages([]);
+    setError(undefined);
+    setIsGenerating(true);
 
     const selectedDashboard = dashboards.find((dash) => dash.uid === selectedUid);
     const manualVariables = parseVariablesText(snapshot.variablesText);
@@ -574,8 +579,8 @@ const ReportRunner = ({ settings }: ReportRunnerProps) => {
         timeRange: coerceRawRange(snapshot.range),
         timeZone: snapshot.timezone || 'browser',
         variables: manualVariables,
-        layout: layoutForRun,
       },
+      layoutForRun,
       snapshot.theme || undefined
     );
     lastAppliedQueryRef.current = currentQuery;
