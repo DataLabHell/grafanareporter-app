@@ -18,3 +18,5 @@ apps:
         showPageNumbers: true
         pageNumberPlacement: 'footer'
         pageNumberAlignment: 'right'
+        renderWidth: 3200
+        renderHeight: 1800
