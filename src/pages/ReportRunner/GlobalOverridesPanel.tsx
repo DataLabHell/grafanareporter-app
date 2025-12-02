@@ -17,7 +17,7 @@
 import { Button, Field, Input, RadioButtonGroup, Switch, useStyles2 } from '@grafana/ui';
 import React from 'react';
 import { getAdvancedConfigStyles } from 'styles/advancedConfigStyles';
-import { BrandingAlignment, BrandingPlacement, LayoutSettings, ReportOrientation } from '../../types/reporting';
+import { LayoutSettings, alignmentOptions, orientationOptions, placementOptions } from '../../types/reporting';
 import { LayoutDraft, LayoutDraftErrors, LayoutNumericField } from '../../utils/layoutValidation';
 
 interface Props {
@@ -29,22 +29,6 @@ interface Props {
   onLayoutChange: (next: Partial<LayoutSettings>) => void;
   onLayoutInputChange: (field: LayoutNumericField, value: string) => void;
 }
-
-const orientationOptions = [
-  { label: 'Portrait', value: 'portrait' as ReportOrientation },
-  { label: 'Landscape', value: 'landscape' as ReportOrientation },
-];
-
-const placementOptions = [
-  { label: 'Header', value: 'header' as BrandingPlacement },
-  { label: 'Footer', value: 'footer' as BrandingPlacement },
-];
-
-const alignmentOptions = [
-  { label: 'Left', value: 'left' as BrandingAlignment },
-  { label: 'Center', value: 'center' as BrandingAlignment },
-  { label: 'Right', value: 'right' as BrandingAlignment },
-];
 
 export const GlobalOverridesPanel = ({
   isOpen,
@@ -67,27 +51,49 @@ export const GlobalOverridesPanel = ({
     }
   };
 
-  const handleLayoutToggle =
-    (key: keyof Pick<LayoutSettings, 'logoEnabled' | 'showPageNumbers' | 'showPanelTitles'>) =>
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      onLayoutChange({ [key]: event.target.checked } as Partial<LayoutSettings>);
-    };
+  const handlePanelTitlesToggle = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const enabled = event.target.checked;
+    onLayoutChange({
+      panels: {
+        ...(layout.panels || {}),
+        title: { ...(layout.panels?.title || {}), enabled },
+      },
+    });
+  };
 
-  const handlePlacementChange =
-    (key: keyof Pick<LayoutSettings, 'logoPlacement' | 'pageNumberPlacement'>) => (value: string | null) => {
-      if (value === 'header' || value === 'footer') {
-        onLayoutChange({ [key]: value } as Partial<LayoutSettings>);
-      }
-    };
+  const handleLogoToggle = (event: React.ChangeEvent<HTMLInputElement>) => {
+    onLayoutChange({ logo: { ...(layout.logo || {}), enabled: event.target.checked } });
+  };
 
-  const handleAlignmentChange =
-    (key: keyof Pick<LayoutSettings, 'logoAlignment' | 'pageNumberAlignment'>) => (value: string | null) => {
-      if (value === 'left' || value === 'center' || value === 'right') {
-        onLayoutChange({ [key]: value } as Partial<LayoutSettings>);
-      }
-    };
+  const handlePageNumbersToggle = (event: React.ChangeEvent<HTMLInputElement>) => {
+    onLayoutChange({ pageNumber: { ...(layout.pageNumber || {}), enabled: event.target.checked } });
+  };
 
-  const logoAvailable = Boolean(layout.logoUrl);
+  const handleLogoPlacementChange = (value: string | null) => {
+    if (value === 'header' || value === 'footer') {
+      onLayoutChange({ logo: { ...(layout.logo || {}), placement: value } });
+    }
+  };
+
+  const handlePagePlacementChange = (value: string | null) => {
+    if (value === 'header' || value === 'footer') {
+      onLayoutChange({ pageNumber: { ...(layout.pageNumber || {}), placement: value } });
+    }
+  };
+
+  const handleLogoAlignmentChange = (value: string | null) => {
+    if (value === 'left' || value === 'center' || value === 'right') {
+      onLayoutChange({ logo: { ...(layout.logo || {}), alignment: value } });
+    }
+  };
+
+  const handlePageAlignmentChange = (value: string | null) => {
+    if (value === 'left' || value === 'center' || value === 'right') {
+      onLayoutChange({ pageNumber: { ...(layout.pageNumber || {}), alignment: value } });
+    }
+  };
+
+  const logoAvailable = Boolean(layout.logo?.url);
 
   return (
     <>
@@ -132,44 +138,44 @@ export const GlobalOverridesPanel = ({
           </Field>
 
           <Field
-            label="Panel spacing (pt)"
-            invalid={Boolean(layoutErrors?.panelSpacing)}
-            error={layoutErrors?.panelSpacing}
+            label="Panels spacing (pt)"
+            invalid={Boolean(layoutErrors?.panelsSpacing)}
+            error={layoutErrors?.panelsSpacing}
           >
             <Input
               type="number"
               min={0}
               step={1}
-              value={layoutDraft.panelSpacing}
-              onChange={handleNumericInput('panelSpacing')}
+              value={layoutDraft.panelsSpacing}
+              onChange={handleNumericInput('panelsSpacing')}
             />
           </Field>
 
           <Field
-            label="Panel render width (px)"
-            invalid={Boolean(layoutErrors?.renderWidth)}
-            error={layoutErrors?.renderWidth}
+            label="Panels render width (px)"
+            invalid={Boolean(layoutErrors?.panelsWidth)}
+            error={layoutErrors?.panelsWidth}
           >
             <Input
               type="number"
               min={100}
               step={10}
-              value={layoutDraft.renderWidth}
-              onChange={handleNumericInput('renderWidth')}
+              value={layoutDraft.panelsWidth}
+              onChange={handleNumericInput('panelsWidth')}
             />
           </Field>
 
           <Field
-            label="Panel render height (px)"
-            invalid={Boolean(layoutErrors?.renderHeight)}
-            error={layoutErrors?.renderHeight}
+            label="Panels render height (px)"
+            invalid={Boolean(layoutErrors?.panelsHeight)}
+            error={layoutErrors?.panelsHeight}
           >
             <Input
               type="number"
               min={100}
               step={10}
-              value={layoutDraft.renderHeight}
-              onChange={handleNumericInput('renderHeight')}
+              value={layoutDraft.panelsHeight}
+              onChange={handleNumericInput('panelsHeight')}
             />
           </Field>
 
@@ -192,80 +198,80 @@ export const GlobalOverridesPanel = ({
           </Field>
 
           <Field label="Panel titles">
-            <Switch value={layout.showPanelTitles} onChange={handleLayoutToggle('showPanelTitles')} />
+            <Switch value={layout.panels?.title?.enabled} onChange={handlePanelTitlesToggle} />
           </Field>
-          <Field
-            label="Panel title font size (pt)"
-            invalid={Boolean(layoutErrors?.panelTitleFontSize)}
-            error={layoutErrors?.panelTitleFontSize}
-          >
-            <Input
-              type="number"
-              min={1}
-              step={1}
-              value={layoutDraft.panelTitleFontSize}
-              onChange={handleNumericInput('panelTitleFontSize')}
-            />
-          </Field>
+          {layout.panels?.title?.enabled && (
+            <Field
+              label="Panel title font size (pt)"
+              invalid={Boolean(layoutErrors?.panelsTitleFontSize)}
+              error={layoutErrors?.panelsTitleFontSize}
+            >
+              <Input
+                type="number"
+                min={1}
+                step={1}
+                value={layoutDraft.panelsTitleFontSize}
+                onChange={handleNumericInput('panelsTitleFontSize')}
+              />
+            </Field>
+          )}
 
           <Field label="Page numbers">
-            <Switch value={layout.showPageNumbers} onChange={handleLayoutToggle('showPageNumbers')} />
+            <Switch value={layout.pageNumber?.enabled} onChange={handlePageNumbersToggle} />
           </Field>
 
-          {layout.showPageNumbers && (
+          {layout.pageNumber?.enabled && (
             <Field label="Page number placement">
               <div className={styles.inlineControls}>
                 <RadioButtonGroup
                   options={placementOptions.map((option) => ({
                     ...option,
                     disabled:
-                      layout.logoEnabled &&
-                      layout.logoPlacement === option.value &&
-                      layout.logoAlignment === layout.pageNumberAlignment,
+                      layout.logo &&
+                      layout.logo.enabled &&
+                      layout.logo?.placement === option.value &&
+                      layout.logo?.alignment === layout.pageNumber?.alignment,
                   }))}
-                  value={layout.pageNumberPlacement}
-                  onChange={handlePlacementChange('pageNumberPlacement')}
+                  value={layout.pageNumber?.placement}
+                  onChange={handlePagePlacementChange}
                 />
                 <RadioButtonGroup
                   options={alignmentOptions.map((option) => ({
                     ...option,
                     disabled:
-                      layout.logoEnabled &&
-                      layout.logoPlacement === layout.pageNumberPlacement &&
-                      layout.logoAlignment === option.value,
+                      layout.logo &&
+                      layout.logo.enabled &&
+                      layout.logo?.placement === layout.pageNumber?.placement &&
+                      layout.logo?.alignment === option.value,
                   }))}
-                  value={layout.pageNumberAlignment}
-                  onChange={handleAlignmentChange('pageNumberAlignment')}
+                  value={layout.pageNumber?.alignment}
+                  onChange={handlePageAlignmentChange}
                 />
               </div>
             </Field>
           )}
 
-          <Field
-            label="Logo max width (pt)"
-            invalid={Boolean(layoutErrors?.brandingLogoMaxWidth)}
-            error={layoutErrors?.brandingLogoMaxWidth}
-          >
+          <Field label="Logo max width (pt)" invalid={Boolean(layoutErrors?.logoWidth)} error={layoutErrors?.logoWidth}>
             <Input
               type="number"
               min={1}
               step={1}
-              value={layoutDraft.brandingLogoMaxWidth}
-              onChange={handleNumericInput('brandingLogoMaxWidth')}
+              value={layoutDraft.logoWidth}
+              onChange={handleNumericInput('logoWidth')}
             />
           </Field>
 
           <Field
             label="Logo max height (pt)"
-            invalid={Boolean(layoutErrors?.brandingLogoMaxHeight)}
-            error={layoutErrors?.brandingLogoMaxHeight}
+            invalid={Boolean(layoutErrors?.logoHeight)}
+            error={layoutErrors?.logoHeight}
           >
             <Input
               type="number"
               min={1}
               step={1}
-              value={layoutDraft.brandingLogoMaxHeight}
-              onChange={handleNumericInput('brandingLogoMaxHeight')}
+              value={layoutDraft.logoHeight}
+              onChange={handleNumericInput('logoHeight')}
             />
           </Field>
 
@@ -301,8 +307,8 @@ export const GlobalOverridesPanel = ({
             <div className={styles.fieldStack}>
               <div className={styles.inlineRow}>
                 <Switch
-                  value={layout.logoEnabled && logoAvailable}
-                  onChange={handleLayoutToggle('logoEnabled')}
+                  value={Boolean(layout.logo?.enabled) && logoAvailable}
+                  onChange={handleLogoToggle}
                   disabled={!logoAvailable}
                 />
                 <span className={styles.muted}>
@@ -312,30 +318,30 @@ export const GlobalOverridesPanel = ({
               {logoAvailable && (
                 <>
                   <div className={styles.logoPreview}>
-                    <img src={layout.logoUrl} alt="Logo preview" />
+                    <img src={layout.logo?.url} alt="Logo preview" />
                   </div>
                   <div className={styles.inlineControls}>
                     <RadioButtonGroup
                       options={placementOptions.map((option) => ({
                         ...option,
                         disabled:
-                          layout.showPageNumbers &&
-                          layout.pageNumberPlacement === option.value &&
-                          layout.pageNumberAlignment === layout.logoAlignment,
+                          layout.pageNumber?.enabled &&
+                          layout.pageNumber?.placement === option.value &&
+                          layout.pageNumber?.alignment === layout.logo?.alignment,
                       }))}
-                      value={layout.logoPlacement}
-                      onChange={handlePlacementChange('logoPlacement')}
+                      value={layout.logo?.placement}
+                      onChange={handleLogoPlacementChange}
                     />
                     <RadioButtonGroup
                       options={alignmentOptions.map((option) => ({
                         ...option,
                         disabled:
-                          layout.showPageNumbers &&
-                          layout.pageNumberPlacement === layout.logoPlacement &&
-                          layout.pageNumberAlignment === option.value,
+                          layout.pageNumber?.enabled &&
+                          layout.pageNumber?.placement === layout.logo?.placement &&
+                          layout.pageNumber?.alignment === option.value,
                       }))}
-                      value={layout.logoAlignment}
-                      onChange={handleAlignmentChange('logoAlignment')}
+                      value={layout.logo?.alignment}
+                      onChange={handleLogoAlignmentChange}
                     />
                   </div>
                 </>
