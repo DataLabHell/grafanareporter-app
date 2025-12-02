@@ -20,7 +20,7 @@ export const testIds = {
     panelSpacing: 'data-testid ac-panel-spacing',
     orientation: 'data-testid ac-orientation',
     submit: 'data-testid ac-submit-form',
-    footerLogo: 'data-testid ac-footer-logo',
+    logo: 'data-testid ac-footer-logo',
     pageNumbers: 'data-testid ac-page-numbers',
     logoEnabled: 'data-testid ac-logo-enabled',
     panelTitles: 'data-testid ac-panel-titles',

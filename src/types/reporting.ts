@@ -23,6 +23,35 @@ export type ReportOrientation = 'portrait' | 'landscape';
 export type BrandingPlacement = 'header' | 'footer';
 export type BrandingAlignment = 'left' | 'center' | 'right';
 
+export type BrandingItemType = 'logo' | 'pageNumber' | 'text';
+
+export interface BrandingItemBase {
+  id: string;
+  type: BrandingItemType;
+  placement: BrandingPlacement;
+  alignment: BrandingAlignment;
+}
+
+export interface BrandingLogoItem extends BrandingItemBase {
+  type: 'logo';
+  logoUrl: string;
+  maxWidth?: number;
+  maxHeight?: number;
+}
+
+export interface BrandingPageNumberItem extends BrandingItemBase {
+  type: 'pageNumber';
+  label?: string;
+}
+
+export interface BrandingTextItem extends BrandingItemBase {
+  type: 'text';
+  text: string;
+  fontSize?: number;
+}
+
+export type BrandingItem = BrandingLogoItem | BrandingPageNumberItem | BrandingTextItem;
+
 export interface VariableValue {
   value: string;
   text?: string;
