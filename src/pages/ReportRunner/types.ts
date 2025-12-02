@@ -17,7 +17,7 @@
 import { RawTimeRange } from '@grafana/data';
 import { TimeZone } from '@grafana/schema';
 import { DashboardModel } from '../../types/grafana';
-import { LayoutSettings, ReportTheme, VariableValueMap } from '../../types/reporting';
+import { ReportTheme, ResolvedLayoutSettings, VariableValueMap } from '../../types/reporting';
 
 export interface DashboardSearchHit {
   uid: string;
@@ -41,7 +41,7 @@ export interface ManualRunContext {
 export interface AdvancedSettingsSnapshot {
   range: RawTimeRange;
   timezone: TimeZone | 'browser';
-  theme: ReportTheme;
+  reportTheme: ReportTheme;
   variablesText: string;
-  layout: Required<LayoutSettings>;
+  layout: ResolvedLayoutSettings;
 }

@@ -14,47 +14,50 @@
  * limitations under the License.
  */
 
-import { LayoutSettings } from '../types/reporting';
+import { ResolvedLayoutSettings } from '../types/reporting';
 
 export type LayoutNumericField =
   | 'panelsPerPage'
-  | 'panelSpacing'
-  | 'panelTitleFontSize'
-  | 'renderWidth'
-  | 'renderHeight'
+  | 'panelsSpacing'
+  | 'panelsTitleFontSize'
+  | 'panelsWidth'
+  | 'panelsHeight'
   | 'pageMargin'
-  | 'brandingLogoMaxWidth'
-  | 'brandingLogoMaxHeight'
+  | 'logoWidth'
+  | 'logoHeight'
   | 'brandingTextLineHeight'
-  | 'brandingSectionPadding';
+  | 'brandingSectionPadding'
+  | 'pageNumberFontSize';
 
 export type LayoutDraft = Record<LayoutNumericField, string>;
 export type LayoutDraftErrors = Partial<Record<LayoutNumericField, string>>;
 
 const CONSTRAINTS: Record<LayoutNumericField, { label: string; min: number }> = {
   panelsPerPage: { label: 'Panels per page', min: 1 },
-  panelSpacing: { label: 'Panel spacing', min: 0 },
-  panelTitleFontSize: { label: 'Panel title font size', min: 1 },
-  renderWidth: { label: 'Panel render width', min: 100 },
-  renderHeight: { label: 'Panel render height', min: 100 },
+  panelsSpacing: { label: 'Panels spacing', min: 0 },
+  panelsTitleFontSize: { label: 'Panels title font size', min: 1 },
+  panelsWidth: { label: 'Panels render width', min: 100 },
+  panelsHeight: { label: 'Panels render height', min: 100 },
   pageMargin: { label: 'Page margin', min: 0 },
-  brandingLogoMaxWidth: { label: 'Logo max width', min: 1 },
-  brandingLogoMaxHeight: { label: 'Logo max height', min: 1 },
+  logoWidth: { label: 'Logo width', min: 1 },
+  logoHeight: { label: 'Logo height', min: 1 },
   brandingTextLineHeight: { label: 'Text height', min: 1 },
   brandingSectionPadding: { label: 'Branding padding', min: 0 },
+  pageNumberFontSize: { label: 'Page number font size', min: 1 },
 };
 
 export const LAYOUT_NUMERIC_CONSTRAINTS: Readonly<typeof CONSTRAINTS> = CONSTRAINTS;
 
-export const createLayoutDraft = (layout: Required<LayoutSettings>): LayoutDraft => ({
-  panelsPerPage: String(layout.panelsPerPage),
-  panelSpacing: String(layout.panelSpacing),
-  panelTitleFontSize: String(layout.panelTitleFontSize),
-  renderWidth: String(layout.renderWidth),
-  renderHeight: String(layout.renderHeight),
+export const createLayoutDraft = (layout: ResolvedLayoutSettings): LayoutDraft => ({
+  panelsPerPage: String(layout.panels.perPage),
+  panelsSpacing: String(layout.panels.spacing),
+  panelsTitleFontSize: String(layout.panels.title.fontSize),
+  pageNumberFontSize: String(layout.pageNumber.fontSize),
+  panelsWidth: String(layout.panels.width),
+  panelsHeight: String(layout.panels.height),
   pageMargin: String(layout.pageMargin),
-  brandingLogoMaxWidth: String(layout.brandingLogoMaxWidth),
-  brandingLogoMaxHeight: String(layout.brandingLogoMaxHeight),
+  logoWidth: String(layout.logo.width),
+  logoHeight: String(layout.logo.height),
   brandingTextLineHeight: String(layout.brandingTextLineHeight),
   brandingSectionPadding: String(layout.brandingSectionPadding),
 });
@@ -96,16 +99,34 @@ export const validateLayoutDraft = (
 };
 
 export const mergeDraftValues = (
-  base: Required<LayoutSettings>,
+  base: ResolvedLayoutSettings,
   values?: Record<LayoutNumericField, number>
-): Required<LayoutSettings> => {
+): ResolvedLayoutSettings => {
   if (!values) {
     return base;
   }
 
   return {
     ...base,
-    ...values,
+    panels: {
+      ...base.panels,
+      perPage: values.panelsPerPage ?? base.panels.perPage,
+      spacing: values.panelsSpacing ?? base.panels.spacing,
+      title: {
+        ...base.panels.title,
+        fontSize: values.panelsTitleFontSize ?? base.panels.title.fontSize,
+      },
+      width: values.panelsWidth ?? base.panels.width,
+      height: values.panelsHeight ?? base.panels.height,
+    },
+    logo: {
+      ...base.logo,
+      width: values.logoWidth ?? base.logo.width,
+      height: values.logoHeight ?? base.logo.height,
+    },
+    pageMargin: values.pageMargin ?? base.pageMargin,
+    brandingTextLineHeight: values.brandingTextLineHeight ?? base.brandingTextLineHeight,
+    brandingSectionPadding: values.brandingSectionPadding ?? base.brandingSectionPadding,
   };
 };
 

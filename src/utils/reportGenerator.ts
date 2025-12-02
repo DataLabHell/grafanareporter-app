@@ -22,11 +22,11 @@ import { jsPDF, TextOptionsLight } from 'jspdf';
 import { lastValueFrom } from 'rxjs';
 import { DashboardApiResponse, DashboardModel, PanelModel } from '../types/grafana';
 import {
-  BrandingAlignment,
-  BrandingPlacement,
-  LayoutSettings,
+  LayoutAlignment,
+  LayoutPlacement,
   ReporterPluginSettings,
   ReportTheme,
+  ResolvedLayoutSettings,
   resolveLayoutSettings,
   VariableValue,
   VariableValueMap,
@@ -71,6 +71,32 @@ interface GenerateReportOptions {
 
 const DEFAULT_RAW_TIME_RANGE: RawTimeRange = { from: 'now-6h', to: 'now' };
 
+const parseHexColor = (hex: string | undefined): { r: number; g: number; b: number } | null => {
+  if (!hex) {
+    return null;
+  }
+  const normalized = hex.replace('#', '').trim();
+  const expand =
+    normalized.length === 3
+      ? normalized
+          .split('')
+          .map((c) => c + c)
+          .join('')
+      : normalized;
+  if (expand.length !== 6) {
+    return null;
+  }
+  const value = Number.parseInt(expand, 16);
+  if (Number.isNaN(value)) {
+    return null;
+  }
+  return {
+    r: (value >> 16) & 255,
+    g: (value >> 8) & 255,
+    b: value & 255,
+  };
+};
+
 /**
  * Orchestrates the report flow: fetch dashboard, resolve variables, render panels via /render, then compose a PDF.
  * Emits progress messages via `onProgress` and returns the saved filename on success.
@@ -82,7 +108,7 @@ export const generateDashboardReport = async ({
   manualContext,
   signal,
 }: GenerateReportOptions) => {
-  const reporterTheme = resolveThemePreference(settings?.themePreference ?? 'user');
+  const reportTheme = resolveThemePreference(settings?.themePreference ?? 'user');
   const notify = (message: string) => onProgress?.(message);
   const backendSrv = getBackendSrv();
   const templateSrv = getTemplateSrv();
@@ -128,11 +154,11 @@ export const generateDashboardReport = async ({
 
   // Layout preferences come from the resolved plugin settings. Manual overrides are merged upstream.
   const layoutConfig = resolveLayoutSettings(settings?.layout);
-  const renderWidth = layoutConfig.renderWidth;
-  const renderHeight = layoutConfig.renderHeight;
+  const renderWidth = layoutConfig.panels.width;
+  const renderHeight = layoutConfig.panels.height;
   const pageMargin = layoutConfig.pageMargin;
   const logoAsset =
-    layoutConfig.logoEnabled && layoutConfig.logoUrl ? await loadLogoAsset(layoutConfig.logoUrl) : undefined;
+    layoutConfig.logo.enabled && layoutConfig.logo.url ? await loadLogoAsset(layoutConfig.logo.url) : undefined;
   const headerHeight = getBrandingReservedHeight('header', layoutConfig, logoAsset);
   const footerHeight = getBrandingReservedHeight('footer', layoutConfig, logoAsset);
 
@@ -160,7 +186,7 @@ export const generateDashboardReport = async ({
       panelId: String(panelRenderId),
       from: String(timeRange.from),
       to: String(timeRange.to),
-      theme: reporterTheme,
+      theme: reportTheme,
       width: String(renderWidth),
       height: String(renderHeight),
       timezone: String(timeZone ?? 'browser'),
@@ -213,15 +239,17 @@ export const generateDashboardReport = async ({
   });
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
-  const panelsPerPage = Math.max(1, layoutConfig.panelsPerPage);
-  const panelSpacing = Math.max(0, layoutConfig.panelSpacing);
+  const panelsPerPage = Math.max(1, layoutConfig.panels.perPage);
+  const panelsSpacing = Math.max(0, layoutConfig.panels.spacing);
   const gridColumns = determineGridColumns(panelsPerPage);
   const gridRows = Math.max(1, Math.ceil(panelsPerPage / gridColumns));
   const totalPages = Math.max(1, Math.ceil(panelImages.length / panelsPerPage));
-  const showPanelTitles = layoutConfig.showPanelTitles;
-  const panelTitleFontSize = layoutConfig.panelTitleFontSize;
-  const titleOffset = showPanelTitles ? panelTitleFontSize : 0;
-  const contentOffset = showPanelTitles ? panelTitleFontSize + 4 : 0;
+  const panelsTitleEnabled = layoutConfig.panels.title.enabled;
+  const panelsTitleFontSize = layoutConfig.panels.title.fontSize;
+  const panelsTitleFontFamily = layoutConfig.panels.title.fontFamily;
+  const panelsTitleFontColor = layoutConfig.panels.title.fontColor;
+  const titleOffset = panelsTitleEnabled ? panelsTitleFontSize : 0;
+  const contentOffset = panelsTitleEnabled ? panelsTitleFontSize + 4 : 0;
 
   // Walk through the rendered panels in chunks of `panelsPerPage`, laying them out on each PDF page.
   for (let pageIndex = 0; pageIndex < panelImages.length; pageIndex += panelsPerPage) {
@@ -232,16 +260,16 @@ export const generateDashboardReport = async ({
     const pageItems = panelImages.slice(pageIndex, pageIndex + panelsPerPage);
     throwIfAborted(signal);
     const activeColumns = Math.min(gridColumns, Math.max(1, pageItems.length));
-    const slotWidth = Math.max(10, (pageWidth - pageMargin * 2 - panelSpacing * (activeColumns - 1)) / activeColumns);
+    const slotWidth = Math.max(10, (pageWidth - pageMargin * 2 - panelsSpacing * (activeColumns - 1)) / activeColumns);
     const slotHeight = Math.max(
       40,
-      (pageHeight - pageMargin * 2 - headerHeight - footerHeight - panelSpacing * (gridRows - 1)) / gridRows
+      (pageHeight - pageMargin * 2 - headerHeight - footerHeight - panelsSpacing * (gridRows - 1)) / gridRows
     );
     for (const [slotIndex, image] of pageItems.entries()) {
       const rowIndex = Math.floor(slotIndex / activeColumns);
       const columnIndex = slotIndex % activeColumns;
-      const xOffset = pageMargin + columnIndex * (slotWidth + panelSpacing);
-      const yOffset = pageMargin + headerHeight + rowIndex * (slotHeight + panelSpacing);
+      const xOffset = pageMargin + columnIndex * (slotWidth + panelsSpacing);
+      const yOffset = pageMargin + headerHeight + rowIndex * (slotHeight + panelsSpacing);
       const contentHeight = Math.max(10, slotHeight - contentOffset);
       const maxImageWidth = slotWidth;
       const { width: imageWidth, height: imageHeight } = fitRectangle(
@@ -253,8 +281,13 @@ export const generateDashboardReport = async ({
       const imageX = xOffset + (slotWidth - imageWidth) / 2;
       const imageY = yOffset + contentOffset + (contentHeight - imageHeight) / 2;
 
-      if (showPanelTitles) {
-        pdf.setFontSize(panelTitleFontSize);
+      if (panelsTitleEnabled) {
+        pdf.setFont(panelsTitleFontFamily, 'normal', 'normal');
+        pdf.setFontSize(panelsTitleFontSize);
+        const rgb = parseHexColor(panelsTitleFontColor);
+        if (rgb) {
+          pdf.setTextColor(rgb.r, rgb.g, rgb.b);
+        }
         pdf.text(image.title, xOffset, yOffset + titleOffset);
       }
 
@@ -758,16 +791,12 @@ const determineGridColumns = (slotsPerPage: number) => {
   return 1;
 };
 
-const getBrandingReservedHeight = (
-  placement: BrandingPlacement,
-  layout: Required<LayoutSettings>,
-  logo?: LogoAsset
-) => {
+const getBrandingReservedHeight = (placement: LayoutPlacement, layout: ResolvedLayoutSettings, logo?: LogoAsset) => {
   const logoDimensions =
-    layout.logoEnabled && layout.logoPlacement === placement && logo
-      ? fitRectangle(layout.brandingLogoMaxWidth, layout.brandingLogoMaxHeight, logo.width, logo.height)
+    layout.logo.enabled && layout.logo.placement === placement && logo
+      ? fitRectangle(layout.logo.width, layout.logo.height, logo.width, logo.height)
       : undefined;
-  const showNumbers = layout.showPageNumbers && layout.pageNumberPlacement === placement;
+  const showNumbers = layout.pageNumber.enabled && layout.pageNumber.placement === placement;
 
   if (!logoDimensions && !showNumbers) {
     return 0;
@@ -813,8 +842,8 @@ const getPanelTitle = (
 const renderBrandingArea = (
   pdf: jsPDF,
   options: {
-    placement: BrandingPlacement;
-    layoutSettings: Required<LayoutSettings>;
+    placement: LayoutPlacement;
+    layoutSettings: ResolvedLayoutSettings;
     logo?: LogoAsset;
     areaHeight: number;
     pageWidth: number;
@@ -830,10 +859,10 @@ const renderBrandingArea = (
   }
 
   const logoDimensions =
-    layoutSettings.logoEnabled && layoutSettings.logoPlacement === placement && logo
-      ? fitRectangle(layoutSettings.brandingLogoMaxWidth, layoutSettings.brandingLogoMaxHeight, logo.width, logo.height)
+    layoutSettings.logo.enabled && layoutSettings.logo.placement === placement && logo
+      ? fitRectangle(layoutSettings.logo.width, layoutSettings.logo.height, logo.width, logo.height)
       : undefined;
-  const showNumbers = layoutSettings.showPageNumbers && layoutSettings.pageNumberPlacement === placement;
+  const showNumbers = layoutSettings.pageNumber.enabled && layoutSettings.pageNumber.placement === placement;
 
   if (!logoDimensions && !showNumbers) {
     return;
@@ -844,17 +873,28 @@ const renderBrandingArea = (
   const centerY = areaTop + (areaHeight - padding * 2) / 2;
 
   if (logoDimensions && logo) {
-    const logoX = getAlignedX(layoutSettings.logoAlignment, logoDimensions.width, pageWidth, layoutSettings.pageMargin);
+    const logoX = getAlignedX(
+      layoutSettings.logo.alignment,
+      logoDimensions.width,
+      pageWidth,
+      layoutSettings.pageMargin
+    );
     const logoY = centerY - logoDimensions.height / 2;
     pdf.addImage(logo.dataUrl, 'PNG', logoX, logoY, logoDimensions.width, logoDimensions.height);
   }
 
   if (showNumbers) {
-    const label = `Page ${pageNumber} of ${totalPages}`;
+    const language = layoutSettings.pageNumber.language;
+    let label = '';
+    if (language === 'de') {
+      label = `Seite ${pageNumber} von ${totalPages}`;
+    } else {
+      label = `Page ${pageNumber} of ${totalPages}`;
+    }
     const textY = centerY + layoutSettings.brandingTextLineHeight / 3;
     pdf.setFontSize(10);
     const { textX, textOptions } = getAlignedTextPosition(
-      layoutSettings.pageNumberAlignment,
+      layoutSettings.pageNumber.alignment,
       pageWidth,
       layoutSettings.pageMargin
     );
@@ -862,7 +902,7 @@ const renderBrandingArea = (
   }
 };
 
-const getAlignedX = (alignment: BrandingAlignment, contentWidth: number, pageWidth: number, pageMargin: number) => {
+const getAlignedX = (alignment: LayoutAlignment, contentWidth: number, pageWidth: number, pageMargin: number) => {
   if (alignment === 'center') {
     return pageWidth / 2 - contentWidth / 2;
   }
@@ -873,7 +913,7 @@ const getAlignedX = (alignment: BrandingAlignment, contentWidth: number, pageWid
 };
 
 const getAlignedTextPosition = (
-  alignment: BrandingAlignment,
+  alignment: LayoutAlignment,
   pageWidth: number,
   pageMargin: number
 ): {

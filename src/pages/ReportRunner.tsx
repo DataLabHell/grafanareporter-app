@@ -24,7 +24,13 @@ import { getReportStyles } from 'styles/reportStyles';
 import { PLUGIN_BASE_URL, ROUTES } from '../constants';
 import pluginJson from '../plugin.json';
 import { ensureReporterSettings, getReporterSettings, setReporterSettings } from '../state/pluginSettings';
-import { LayoutSettings, ReportTheme, ReporterPluginSettings, resolveLayoutSettings } from '../types/reporting';
+import {
+  LayoutSettings,
+  ReportTheme,
+  ReporterPluginSettings,
+  ResolvedLayoutSettings,
+  resolveLayoutSettings,
+} from '../types/reporting';
 import {
   LAYOUT_NUMERIC_CONSTRAINTS,
   LayoutDraft,
@@ -57,6 +63,48 @@ import {
 const LAYOUT_ERROR_MESSAGE = 'Fix the highlighted layout overrides before generating the report.';
 
 const userThemePreference: ReportTheme = config.bootData?.user?.theme === 'light' ? 'light' : 'dark';
+
+// Deep merge base layout with overrides so defaults (e.g., provisioned logo/url) survive partial overrides.
+const mergeLayouts = (
+  base: ResolvedLayoutSettings,
+  override?: LayoutSettings | ResolvedLayoutSettings
+): ResolvedLayoutSettings => {
+  if (!override) {
+    return base;
+  }
+
+  const panels = override.panels || {};
+  const titleOverride = panels.title || {};
+  const logoOverride = override.logo || {};
+  const pageNumberOverride = override.pageNumber || {};
+
+  const mergedTitleEnabled = titleOverride.enabled !== undefined ? titleOverride.enabled : base.panels.title.enabled;
+
+  return {
+    ...base,
+    ...override,
+    panels: {
+      ...base.panels,
+      ...panels,
+      title: {
+        ...base.panels.title,
+        ...titleOverride,
+        enabled: mergedTitleEnabled,
+      },
+    },
+    logo: {
+      ...base.logo,
+      ...logoOverride,
+    },
+    pageNumber: {
+      ...base.pageNumber,
+      ...pageNumberOverride,
+    },
+    pageMargin: override.pageMargin ?? base.pageMargin,
+    brandingTextLineHeight: override.brandingTextLineHeight ?? base.brandingTextLineHeight,
+    brandingSectionPadding: override.brandingSectionPadding ?? base.brandingSectionPadding,
+  };
+};
 
 const ReportRunner = () => {
   const [pluginSettingsState, setPluginSettingsState] = useState<ReporterPluginSettings>(() => getReporterSettings());
@@ -92,7 +140,10 @@ const ReportRunner = () => {
     };
   }, []);
 
-  const layoutDefaults = useMemo(() => resolveLayoutSettings(pluginSettingsState?.layout), [pluginSettingsState]);
+  const layoutDefaults = useMemo(
+    () => resolveLayoutSettings(getReporterSettings(pluginSettingsState).layout),
+    [pluginSettingsState]
+  );
   const location = useLocation();
   const navigate = useNavigate();
   const [status, setStatus] = useState<'idle' | 'working' | 'success' | 'error'>('idle');
@@ -108,7 +159,7 @@ const ReportRunner = () => {
   const [advancedSettings, setAdvancedSettings] = useState<AdvancedSettingsSnapshot>({
     range: coerceRawRange(DEFAULT_TIME_RANGE),
     timezone: 'browser' as TimeZone | 'browser',
-    theme: userThemePreference as ReportTheme,
+    reportTheme: userThemePreference as ReportTheme,
     variablesText: '',
     layout: layoutDefaults,
   });
@@ -202,7 +253,7 @@ const ReportRunner = () => {
   }, []);
 
   const runReport = useCallback(
-    (context: ManualRunContext, layoutOverride?: LayoutSettings, themeOverride?: ReportTheme) => {
+    (context: ManualRunContext, layoutOverride?: ResolvedLayoutSettings, themeOverride?: ReportTheme) => {
       if (!context.dashboardUid) {
         setStatus('error');
         setError('Please select a dashboard before generating the report.');
@@ -221,11 +272,48 @@ const ReportRunner = () => {
       setError(undefined);
       setIsGenerating(true);
 
-      const baseSettings = pluginSettingsState ?? getReporterSettings();
-      const mergedLayout = resolveLayoutSettings({
-        ...(baseSettings?.layout ?? {}),
-        ...(layoutOverride ?? {}),
-      });
+      const baseSettings = getReporterSettings(pluginSettingsState);
+      const baseLayout = resolveLayoutSettings(baseSettings?.layout);
+      const mergeLayouts = (
+        base: ResolvedLayoutSettings,
+        override?: ResolvedLayoutSettings
+      ): ResolvedLayoutSettings => {
+        if (!override) {
+          return base;
+        }
+
+        const mergedPanels = {
+          ...base.panels,
+          ...(override.panels || {}),
+          title: {
+            ...base.panels.title,
+            ...(override.panels?.title || {}),
+          },
+        };
+
+        const mergedLogo = {
+          ...base.logo,
+          ...(override.logo || {}),
+        };
+
+        const mergedPageNumber = {
+          ...base.pageNumber,
+          ...(override.pageNumber || {}),
+        };
+
+        return {
+          ...base,
+          ...override,
+          panels: mergedPanels,
+          logo: mergedLogo,
+          pageNumber: mergedPageNumber,
+          pageMargin: override.pageMargin ?? base.pageMargin,
+          brandingTextLineHeight: override.brandingTextLineHeight ?? base.brandingTextLineHeight,
+          brandingSectionPadding: override.brandingSectionPadding ?? base.brandingSectionPadding,
+        };
+      };
+
+      const mergedLayout = mergeLayouts(baseLayout, layoutOverride);
       const settings: ReporterPluginSettings = { ...(baseSettings ?? {}), layout: mergedLayout };
       if (themeOverride) {
         settings.themePreference = themeOverride;
@@ -289,16 +377,14 @@ const ReportRunner = () => {
     const to = params.get('to') ?? undefined;
     const tz = (params.get('tz') ?? params.get('timezone')) as TimeZone | undefined;
     const title = params.get('title') ?? undefined;
-    const themeParam = params.get('theme') as ReportTheme | null;
+    const themeParam = params.get('reportTheme') as ReportTheme | null;
     const theme = themeParam && (themeParam === 'light' || themeParam === 'dark') ? themeParam : undefined;
     const { layout: parsedLayoutOverride, numericOverrides } = parseLayoutOverrides(params);
     const manualVariables = buildManualVariablesFromParams(params);
     // Mark this query as processed so the auto-run effect does not trigger a second run on re-render.
     lastAppliedQueryRef.current = currentQuery;
 
-    const normalizedLayout = parsedLayoutOverride
-      ? resolveLayoutSettings({ ...layoutDefaults, ...parsedLayoutOverride })
-      : layoutDefaults;
+    const normalizedLayout = mergeLayouts(layoutDefaults, parsedLayoutOverride);
     const draftFromLayout = createLayoutDraft(normalizedLayout);
     const mergedDraft = numericOverrides ? { ...draftFromLayout, ...numericOverrides } : draftFromLayout;
     setLayoutDraft(mergedDraft);
@@ -328,7 +414,7 @@ const ReportRunner = () => {
       setAdvancedSettings({
         range: normalizedRange,
         timezone: normalizedContext.timeZone ?? 'browser',
-        theme: theme ?? userThemePreference,
+        reportTheme: theme ?? userThemePreference,
         variablesText: formatVariablesText(normalizedContext.variables),
         layout: normalizedLayout,
       });
@@ -342,7 +428,7 @@ const ReportRunner = () => {
     setAdvancedSettings({
       range: normalizedRange,
       timezone: normalizedContext.timeZone ?? 'browser',
-      theme: theme ?? userThemePreference,
+      reportTheme: theme ?? userThemePreference,
       variablesText: formatVariablesText(normalizedContext.variables),
       layout: layoutForRun,
     });
@@ -508,7 +594,7 @@ const ReportRunner = () => {
         setAdvancedSettings({
           range: coerceRawRange(defaultTime),
           timezone: 'browser',
-          theme: userThemePreference,
+          reportTheme: userThemePreference,
           variablesText: formatVariablesText(defaultVariables),
           layout: layoutDefaults,
         });
@@ -583,7 +669,7 @@ const ReportRunner = () => {
         variables: manualVariables,
       },
       layoutForRun,
-      snapshot.theme || undefined
+      snapshot.reportTheme || undefined
     );
     lastAppliedQueryRef.current = currentQuery;
   };
@@ -677,7 +763,7 @@ const ReportRunner = () => {
           selectedTimezone={advancedSettings.timezone}
           onTimezoneChange={handleTimezoneChange}
           themeOptions={themeOptions}
-          selectedTheme={advancedSettings.theme}
+          selectedTheme={advancedSettings.reportTheme}
           onThemeChange={handleThemeChange}
           variablesText={advancedSettings.variablesText}
           onVariablesChange={handleVariablesChange}

@@ -46,24 +46,34 @@ describe('reportGenerator helpers', () => {
   describe('layout resolution', () => {
     it('merges base settings with manual overrides', () => {
       const base: LayoutSettings = {
-        panelsPerPage: 4,
-        panelSpacing: 8,
-        logoEnabled: true,
-        showPageNumbers: true,
-        logoPlacement: 'header',
-        logoUrl: 'base-logo',
+        panels: {
+          perPage: 4,
+          spacing: 8,
+        },
+        logo: {
+          enabled: true,
+          placement: 'header',
+          url: 'base-logo',
+        },
+        pageNumber: {
+          enabled: true,
+        },
       };
       const override: LayoutSettings = {
-        panelSpacing: 24,
-        showPageNumbers: false,
+        panels: {
+          spacing: 24,
+        },
+        pageNumber: {
+          enabled: false,
+        },
       };
 
       const resolved = resolveLayoutSettings({ ...base, ...override });
-      expect(resolved.panelsPerPage).toBe(4);
-      expect(resolved.panelSpacing).toBe(24);
-      expect(resolved.showPageNumbers).toBe(false);
-      expect(resolved.logoPlacement).toBe('header');
-      expect(resolved.logoUrl).toBe('base-logo');
+      expect(resolved.panels.perPage).toBe(4);
+      expect(resolved.panels.spacing).toBe(24);
+      expect(resolved.pageNumber.enabled).toBe(false);
+      expect(resolved.logo.placement).toBe('header');
+      expect(resolved.logo.url).toBe('base-logo');
     });
   });
 
@@ -113,11 +123,15 @@ describe('reportGenerator helpers', () => {
   describe('getBrandingReservedHeight', () => {
     it('reserves space when logo or page numbers are configured for the placement', () => {
       const layout = resolveLayoutSettings({
-        logoEnabled: true,
-        logoPlacement: 'header',
-        logoUrl: 'data:image/png;base64,abc',
-        showPageNumbers: true,
-        pageNumberPlacement: 'header',
+        logo: {
+          enabled: true,
+          placement: 'header',
+          url: 'data:image/png;base64,abc',
+        },
+        pageNumber: {
+          enabled: true,
+          placement: 'header',
+        },
       });
 
       const logoHeight = __testables.getBrandingReservedHeight('header', layout, {

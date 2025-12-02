@@ -16,7 +16,7 @@
 
 import { RawTimeRange } from '@grafana/data';
 import { DashboardTemplateVariable } from '../../types/grafana';
-import { BrandingAlignment, BrandingPlacement, LayoutSettings, VariableValueMap } from '../../types/reporting';
+import { LayoutAlignment, LayoutPlacement, LayoutSettings, VariableValueMap } from '../../types/reporting';
 import { LayoutNumericField } from '../../utils/layoutValidation';
 import { AdvancedSettingsSnapshot } from './types';
 
@@ -25,17 +25,30 @@ export const DEFAULT_TIME_RANGE = {
   to: 'now',
 } as const;
 
-const NUMERIC_PARAM_KEYS: Record<LayoutNumericField, string> = {
-  panelsPerPage: 'panelsPerPage',
-  panelSpacing: 'panelSpacing',
-  panelTitleFontSize: 'panelTitleFontSize',
-  renderWidth: 'renderWidth',
-  renderHeight: 'renderHeight',
+const PARAMS = {
+  orientation: 'orientation',
+  reportTheme: 'reportTheme',
   pageMargin: 'pageMargin',
-  brandingLogoMaxWidth: 'brandingLogoMaxWidth',
-  brandingLogoMaxHeight: 'brandingLogoMaxHeight',
-  brandingTextLineHeight: 'brandingTextLineHeight',
-  brandingSectionPadding: 'brandingSectionPadding',
+  panelsPerPage: 'panelsPerPage',
+  panelsSpacing: 'panelsSpacing',
+  panelsTitleEnabled: 'panelsTitleEnabled',
+  panelsTitleFontSize: 'panelsTitleFontSize',
+  panelsTitleFontFamily: 'panelsTitleFontFamily',
+  panelsTitleFontColor: 'panelsTitleFontColor',
+  panelsWidth: 'panelsWidth',
+  panelsHeight: 'panelsHeight',
+  logoEnabled: 'logoEnabled',
+  logoPlacement: 'logoPlacement',
+  logoAlignment: 'logoAlignment',
+  logoWidth: 'logoWidth',
+  logoHeight: 'logoHeight',
+  pageNumberEnabled: 'pageNumberEnabled',
+  pageNumberPlacement: 'pageNumberPlacement',
+  pageNumberAlignment: 'pageNumberAlignment',
+  pageNumberLanguage: 'pageNumberLanguage',
+  pageNumberFontFamily: 'pageNumberFontFamily',
+  pageNumberFontSize: 'pageNumberFontSize',
+  pageNumberFontColor: 'pageNumberFontColor',
 };
 
 export const normalizeRawTimeInput = (
@@ -201,19 +214,34 @@ export interface ParsedLayoutOverrides {
 export const parseLayoutOverrides = (params: URLSearchParams): ParsedLayoutOverrides => {
   const layout: LayoutSettings = {};
   const numericOverrides: Partial<Record<LayoutNumericField, string>> = {};
-  const orientation = params.get('orientation');
-  const logo = params.get('logo');
-  const pageNumbers = params.get('pageNumbers');
-  const panelTitles = params.get('panelTitles');
-  const logoPlacement = params.get('logoPlacement');
-  const logoAlignment = params.get('logoAlignment');
-  const pagePlacement = params.get('pagePlacement');
-  const pageAlignment = params.get('pageAlignment');
-  const logoUrl = params.get('logoUrl');
+  const orientation = params.get(PARAMS.orientation);
+  const logoEnabled = params.get(PARAMS.logoEnabled);
+  const pageNumbers = params.get(PARAMS.pageNumberEnabled);
+  const panelTitles = params.get(PARAMS.panelsTitleEnabled);
+  const panelTitleFontFamily = params.get(PARAMS.panelsTitleFontFamily);
+  const panelTitleFontColor = params.get(PARAMS.panelsTitleFontColor);
+  const logoPlacement = params.get(PARAMS.logoPlacement);
+  const logoAlignment = params.get(PARAMS.logoAlignment);
+  const pagePlacement = params.get(PARAMS.pageNumberPlacement);
+  const pageAlignment = params.get(PARAMS.pageNumberAlignment);
+  const pageNumberLanguage = params.get(PARAMS.pageNumberLanguage);
+  const pageNumberFontFamily = params.get(PARAMS.pageNumberFontFamily);
+  const pageNumberFontColor = params.get(PARAMS.pageNumberFontColor);
 
-  (Object.entries(NUMERIC_PARAM_KEYS) as Array<[LayoutNumericField, string]>).forEach(([field, key]) => {
-    const value = params.get(key);
-    if (value !== null) {
+  const numericPairs: Array<[LayoutNumericField, string | null]> = [
+    ['panelsPerPage', params.get(PARAMS.panelsPerPage)],
+    ['panelsSpacing', params.get(PARAMS.panelsSpacing)],
+    ['panelsTitleFontSize', params.get(PARAMS.panelsTitleFontSize)],
+    ['pageNumberFontSize', params.get(PARAMS.pageNumberFontSize)],
+    ['panelsWidth', params.get(PARAMS.panelsWidth)],
+    ['panelsHeight', params.get(PARAMS.panelsHeight)],
+    ['pageMargin', params.get(PARAMS.pageMargin)],
+    ['logoWidth', params.get(PARAMS.logoWidth)],
+    ['logoHeight', params.get(PARAMS.logoHeight)],
+  ];
+
+  numericPairs.forEach(([field, value]) => {
+    if (value !== null && value !== undefined) {
       numericOverrides[field] = value;
     }
   });
@@ -222,29 +250,55 @@ export const parseLayoutOverrides = (params: URLSearchParams): ParsedLayoutOverr
     layout.orientation = orientation;
   }
 
-  if (logo === 'true' || logo === 'false') {
-    layout.logoEnabled = logo === 'true';
-  }
-  if (pageNumbers === 'true' || pageNumbers === 'false') {
-    layout.showPageNumbers = pageNumbers === 'true';
-  }
   if (panelTitles === 'true' || panelTitles === 'false') {
-    layout.showPanelTitles = panelTitles === 'true';
+    layout.panels = {
+      ...(layout.panels || {}),
+      title: { ...(layout.panels?.title || {}), enabled: panelTitles === 'true' },
+    };
   }
-  if (logoUrl) {
-    layout.logoUrl = logoUrl;
+  if (panelTitleFontFamily) {
+    layout.panels = {
+      ...(layout.panels || {}),
+      title: { ...(layout.panels?.title || {}), fontFamily: panelTitleFontFamily },
+    };
+  }
+  if (panelTitleFontColor) {
+    layout.panels = {
+      ...(layout.panels || {}),
+      title: { ...(layout.panels?.title || {}), fontColor: panelTitleFontColor },
+    };
+  }
+
+  if (pageNumbers === 'true' || pageNumbers === 'false') {
+    layout.pageNumber = { ...(layout.pageNumber || {}), enabled: pageNumbers === 'true' };
+  }
+
+  if (pageNumberLanguage) {
+    layout.pageNumber = { ...(layout.pageNumber || {}), language: pageNumberLanguage };
+  }
+
+  if (pageNumberFontFamily) {
+    layout.pageNumber = { ...(layout.pageNumber || {}), fontFamily: pageNumberFontFamily };
+  }
+
+  if (pageNumberFontColor) {
+    layout.pageNumber = { ...(layout.pageNumber || {}), fontColor: pageNumberFontColor };
+  }
+
+  if (logoEnabled === 'true' || logoEnabled === 'false') {
+    layout.logo = { ...(layout.logo || {}), enabled: logoEnabled === 'true' };
   }
   if (logoPlacement === 'header' || logoPlacement === 'footer') {
-    layout.logoPlacement = logoPlacement as BrandingPlacement;
+    layout.logo = { ...(layout.logo || {}), placement: logoPlacement as LayoutPlacement };
   }
   if (logoAlignment === 'left' || logoAlignment === 'center' || logoAlignment === 'right') {
-    layout.logoAlignment = logoAlignment as BrandingAlignment;
+    layout.logo = { ...(layout.logo || {}), alignment: logoAlignment as LayoutAlignment };
   }
   if (pagePlacement === 'header' || pagePlacement === 'footer') {
-    layout.pageNumberPlacement = pagePlacement as BrandingPlacement;
+    layout.pageNumber = { ...(layout.pageNumber || {}), placement: pagePlacement as LayoutPlacement };
   }
   if (pageAlignment === 'left' || pageAlignment === 'center' || pageAlignment === 'right') {
-    layout.pageNumberAlignment = pageAlignment as BrandingAlignment;
+    layout.pageNumber = { ...(layout.pageNumber || {}), alignment: pageAlignment as LayoutAlignment };
   }
 
   return {
@@ -253,7 +307,11 @@ export const parseLayoutOverrides = (params: URLSearchParams): ParsedLayoutOverr
   };
 };
 
-export const buildReportParams = (uid: string, settings: AdvancedSettingsSnapshot) => {
+export const buildReportParams = (
+  uid: string,
+  settings: AdvancedSettingsSnapshot,
+  options?: { includeLogoUrl?: boolean }
+) => {
   const params = new URLSearchParams();
   params.set('uid', uid);
   const normalizedRange = coerceRawRange(settings.range);
@@ -262,27 +320,92 @@ export const buildReportParams = (uid: string, settings: AdvancedSettingsSnapsho
   if (settings.timezone && settings.timezone !== 'browser') {
     params.set('tz', settings.timezone);
   }
-  if (settings.theme) {
-    params.set('theme', settings.theme);
+
+  const panels = settings.layout.panels;
+  const logo = settings.layout.logo;
+  const pageNumber = settings.layout.pageNumber;
+
+  if (settings.layout.orientation) {
+    params.set(PARAMS.orientation, settings.layout.orientation);
   }
-  params.set('orientation', settings.layout.orientation);
-  params.set('panelsPerPage', String(settings.layout.panelsPerPage));
-  params.set('panelSpacing', String(settings.layout.panelSpacing));
-  params.set('logo', settings.layout.logoEnabled ? 'true' : 'false');
-  params.set('panelTitles', settings.layout.showPanelTitles ? 'true' : 'false');
-  params.set('panelTitleFontSize', String(settings.layout.panelTitleFontSize));
-  params.set('pageNumbers', settings.layout.showPageNumbers ? 'true' : 'false');
-  params.set('logoPlacement', settings.layout.logoPlacement);
-  params.set('logoAlignment', settings.layout.logoAlignment);
-  params.set('pagePlacement', settings.layout.pageNumberPlacement);
-  params.set('pageAlignment', settings.layout.pageNumberAlignment);
-  params.set('renderWidth', String(settings.layout.renderWidth));
-  params.set('renderHeight', String(settings.layout.renderHeight));
-  params.set('pageMargin', String(settings.layout.pageMargin));
-  params.set('brandingLogoMaxWidth', String(settings.layout.brandingLogoMaxWidth));
-  params.set('brandingLogoMaxHeight', String(settings.layout.brandingLogoMaxHeight));
-  params.set('brandingTextLineHeight', String(settings.layout.brandingTextLineHeight));
-  params.set('brandingSectionPadding', String(settings.layout.brandingSectionPadding));
+
+  if (settings.reportTheme) {
+    params.set(PARAMS.reportTheme, settings.reportTheme);
+  }
+
+  if (panels.perPage !== undefined) {
+    params.set(PARAMS.panelsPerPage, String(panels.perPage));
+  }
+  if (panels.spacing !== undefined) {
+    params.set(PARAMS.panelsSpacing, String(panels.spacing));
+  }
+
+  if (panels.width !== undefined) {
+    params.set(PARAMS.panelsWidth, String(panels.width));
+  }
+  if (panels.height !== undefined) {
+    params.set(PARAMS.panelsHeight, String(panels.height));
+  }
+
+  const panelsTitlesEnabled = panels.title?.enabled;
+  params.set(PARAMS.panelsTitleEnabled, panelsTitlesEnabled ? 'true' : 'false');
+
+  if (panelsTitlesEnabled) {
+    if (panels.title.fontSize !== undefined) {
+      params.set(PARAMS.panelsTitleFontSize, String(panels.title.fontSize));
+    }
+    if (panels.title.fontFamily) {
+      params.set(PARAMS.panelsTitleFontFamily, panels.title.fontFamily);
+    }
+    if (panels.title.fontColor) {
+      params.set(PARAMS.panelsTitleFontColor, panels.title.fontColor);
+    }
+  }
+
+  const logoEnabled = logo.enabled;
+  params.set(PARAMS.logoEnabled, logoEnabled ? 'true' : 'false');
+
+  if (logoEnabled) {
+    if (logo.placement) {
+      params.set(PARAMS.logoPlacement, logo.placement);
+    }
+    if (logo.alignment) {
+      params.set(PARAMS.logoAlignment, logo.alignment);
+    }
+    if (logo.width !== undefined) {
+      params.set(PARAMS.logoWidth, String(logo.width));
+    }
+    if (logo.height !== undefined) {
+      params.set(PARAMS.logoHeight, String(logo.height));
+    }
+  }
+
+  const pageNumbersEnabled = pageNumber.enabled;
+  params.set(PARAMS.pageNumberEnabled, pageNumbersEnabled ? 'true' : 'false');
+
+  if (pageNumbersEnabled) {
+    if (pageNumber.placement) {
+      params.set(PARAMS.pageNumberPlacement, pageNumber.placement);
+    }
+    if (pageNumber.alignment) {
+      params.set(PARAMS.pageNumberAlignment, pageNumber.alignment);
+    }
+    if (pageNumber.language) {
+      params.set(PARAMS.pageNumberLanguage, pageNumber.language);
+    }
+    if (pageNumber.fontSize !== undefined) {
+      params.set(PARAMS.pageNumberFontSize, String(pageNumber.fontSize));
+    }
+    if (pageNumber.fontFamily) {
+      params.set(PARAMS.pageNumberFontFamily, pageNumber.fontFamily);
+    }
+    if (pageNumber.fontColor) {
+      params.set(PARAMS.pageNumberFontColor, pageNumber.fontColor);
+    }
+  }
+
+  params.set(PARAMS.pageMargin, String(settings.layout.pageMargin));
+
   const vars = parseVariablesText(settings.variablesText);
   if (vars) {
     Object.entries(vars).forEach(([name, values]) => {

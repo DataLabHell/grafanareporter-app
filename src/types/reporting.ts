@@ -17,19 +17,34 @@
 import pluginJson from '../plugin.json';
 
 export type ReportTheme = 'light' | 'dark' | 'user';
-
 export type ReportOrientation = 'portrait' | 'landscape';
 
-export type BrandingPlacement = 'header' | 'footer';
-export type BrandingAlignment = 'left' | 'center' | 'right';
+export type LayoutPlacement = 'header' | 'footer';
+export type LayoutAlignment = 'left' | 'center' | 'right';
 
 export type BrandingItemType = 'logo' | 'pageNumber' | 'text';
+
+export const orientationOptions = [
+  { label: 'Portrait', value: 'portrait' as ReportOrientation },
+  { label: 'Landscape', value: 'landscape' as ReportOrientation },
+];
+
+export const placementOptions = [
+  { label: 'Header', value: 'header' as LayoutPlacement },
+  { label: 'Footer', value: 'footer' as LayoutPlacement },
+];
+
+export const alignmentOptions = [
+  { label: 'Left', value: 'left' as LayoutAlignment },
+  { label: 'Center', value: 'center' as LayoutAlignment },
+  { label: 'Right', value: 'right' as LayoutAlignment },
+];
 
 export interface BrandingItemBase {
   id: string;
   type: BrandingItemType;
-  placement: BrandingPlacement;
-  alignment: BrandingAlignment;
+  placement: LayoutPlacement;
+  alignment: LayoutAlignment;
 }
 
 export interface BrandingLogoItem extends BrandingItemBase {
@@ -59,102 +74,165 @@ export interface VariableValue {
 
 export type VariableValueMap = Record<string, VariableValue[]>;
 
+export interface PanelTitleSettings {
+  enabled?: boolean;
+  fontFamily?: string;
+  fontSize?: number;
+  fontColor?: string;
+}
+
+export interface PanelsLayoutSettings {
+  perPage?: number;
+  spacing?: number;
+  title?: PanelTitleSettings;
+  width?: number;
+  height?: number;
+}
+
+export interface LogoSettings {
+  enabled?: boolean;
+  url?: string;
+  placement?: LayoutPlacement;
+  alignment?: LayoutAlignment;
+  width?: number;
+  height?: number;
+}
+
+export interface PageNumberSettings {
+  enabled?: boolean;
+  placement?: LayoutPlacement;
+  alignment?: LayoutAlignment;
+  language?: string;
+  fontFamily?: string;
+  fontSize?: number;
+  fontColor?: string;
+}
+
+export interface CustomTextElement {
+  type: 'text';
+  content: string;
+  placement: LayoutPlacement;
+  alignment: LayoutAlignment;
+  fontFamily?: string;
+  fontSize?: number;
+  fontColor?: string;
+}
+
+export type CustomElement = CustomTextElement;
+
 export interface LayoutSettings {
+  reportTheme?: ReportTheme;
   orientation?: ReportOrientation;
-  panelsPerPage?: number;
-  panelSpacing?: number;
-  showPanelTitles?: boolean;
-  panelTitleFontSize?: number;
-  showPageNumbers?: boolean;
-  logoUrl?: string;
-  logoEnabled?: boolean;
-  logoPlacement?: BrandingPlacement;
-  logoAlignment?: BrandingAlignment;
-  pageNumberPlacement?: BrandingPlacement;
-  pageNumberAlignment?: BrandingAlignment;
-  renderWidth?: number;
-  renderHeight?: number;
+  panels?: PanelsLayoutSettings;
+  logo?: LogoSettings;
+  pageNumber?: PageNumberSettings;
+  customElements?: CustomElement[];
   pageMargin?: number;
-  brandingLogoMaxWidth?: number;
-  brandingLogoMaxHeight?: number;
   brandingTextLineHeight?: number;
   brandingSectionPadding?: number;
 }
+
+export type ResolvedLayoutSettings = Required<LayoutSettings> & {
+  panels: Required<PanelsLayoutSettings> & { title: Required<PanelTitleSettings> };
+  logo: Required<LogoSettings>;
+  pageNumber: Required<PageNumberSettings>;
+};
 
 export interface ReporterPluginSettings {
   themePreference?: ReportTheme;
   layout?: LayoutSettings;
 }
 
-export const DEFAULT_LAYOUT_SETTINGS: Required<LayoutSettings> = {
-  brandingLogoMaxHeight: 36,
-  brandingLogoMaxWidth: 120,
-  brandingSectionPadding: 6,
-  brandingTextLineHeight: 12,
-  logoAlignment: 'left',
-  logoEnabled: true,
-  logoPlacement: 'footer',
-  logoUrl: `/public/plugins/${pluginJson.id}/img/dlh-logo.svg`,
+export const DEFAULT_LAYOUT_SETTINGS: ResolvedLayoutSettings = {
+  reportTheme: 'dark',
   orientation: 'portrait',
+  panels: {
+    perPage: 2,
+    spacing: 16,
+    title: {
+      enabled: true,
+      fontFamily: 'Arial, sans-serif',
+      fontSize: 14,
+      fontColor: '#000000',
+    },
+    width: 1600,
+    height: 900,
+  },
+  logo: {
+    enabled: true,
+    url: `/public/plugins/${pluginJson.id}/img/dlh-logo.svg`,
+    placement: 'footer',
+    alignment: 'left',
+    width: 120,
+    height: 36,
+  },
+  pageNumber: {
+    enabled: true,
+    placement: 'footer',
+    alignment: 'right',
+    language: 'en',
+    fontFamily: 'Arial, sans-serif',
+    fontSize: 10,
+    fontColor: '#000000',
+  },
+  customElements: [],
   pageMargin: 32,
-  pageNumberAlignment: 'right',
-  pageNumberPlacement: 'footer',
-  panelSpacing: 16,
-  panelsPerPage: 2,
-  panelTitleFontSize: 14,
-  renderHeight: 900,
-  renderWidth: 1600,
-  showPageNumbers: true,
-  showPanelTitles: true,
+  brandingTextLineHeight: 12,
+  brandingSectionPadding: 6,
 };
 
-export const resolveLayoutSettings = (layout?: LayoutSettings): Required<LayoutSettings> => ({
-  orientation: layout?.orientation ?? DEFAULT_LAYOUT_SETTINGS.orientation,
-  panelsPerPage:
-    layout?.panelsPerPage && layout.panelsPerPage > 0 ? layout.panelsPerPage : DEFAULT_LAYOUT_SETTINGS.panelsPerPage,
-  panelSpacing:
-    layout?.panelSpacing !== undefined && layout.panelSpacing >= 0
-      ? layout.panelSpacing
-      : DEFAULT_LAYOUT_SETTINGS.panelSpacing,
-  showPanelTitles: layout?.showPanelTitles ?? DEFAULT_LAYOUT_SETTINGS.showPanelTitles,
-  panelTitleFontSize:
-    typeof layout?.panelTitleFontSize === 'number' && layout.panelTitleFontSize > 0
-      ? layout.panelTitleFontSize
-      : DEFAULT_LAYOUT_SETTINGS.panelTitleFontSize,
-  showPageNumbers: layout?.showPageNumbers ?? DEFAULT_LAYOUT_SETTINGS.showPageNumbers,
-  logoUrl: layout?.logoUrl?.trim() ?? DEFAULT_LAYOUT_SETTINGS.logoUrl,
-  logoEnabled:
-    layout?.logoEnabled !== undefined
-      ? layout.logoEnabled
-      : layout?.logoUrl?.trim()
-      ? true
-      : DEFAULT_LAYOUT_SETTINGS.logoEnabled,
-  logoPlacement: layout?.logoPlacement ?? DEFAULT_LAYOUT_SETTINGS.logoPlacement,
-  logoAlignment: layout?.logoAlignment ?? DEFAULT_LAYOUT_SETTINGS.logoAlignment,
-  pageNumberPlacement: layout?.pageNumberPlacement ?? DEFAULT_LAYOUT_SETTINGS.pageNumberPlacement,
-  pageNumberAlignment: layout?.pageNumberAlignment ?? DEFAULT_LAYOUT_SETTINGS.pageNumberAlignment,
-  renderWidth:
-    typeof layout?.renderWidth === 'number' && layout.renderWidth > 0 ? layout.renderWidth : DEFAULT_LAYOUT_SETTINGS.renderWidth,
-  renderHeight:
-    typeof layout?.renderHeight === 'number' && layout.renderHeight > 0
-      ? layout.renderHeight
-      : DEFAULT_LAYOUT_SETTINGS.renderHeight,
-  pageMargin:
-    typeof layout?.pageMargin === 'number' && layout.pageMargin >= 0 ? layout.pageMargin : DEFAULT_LAYOUT_SETTINGS.pageMargin,
-  brandingLogoMaxWidth:
-    typeof layout?.brandingLogoMaxWidth === 'number' && layout.brandingLogoMaxWidth > 0
-      ? layout.brandingLogoMaxWidth
-      : DEFAULT_LAYOUT_SETTINGS.brandingLogoMaxWidth,
-  brandingLogoMaxHeight:
-    typeof layout?.brandingLogoMaxHeight === 'number' && layout.brandingLogoMaxHeight > 0
-      ? layout.brandingLogoMaxHeight
-      : DEFAULT_LAYOUT_SETTINGS.brandingLogoMaxHeight,
-  brandingTextLineHeight:
-    typeof layout?.brandingTextLineHeight === 'number' && layout.brandingTextLineHeight > 0
-      ? layout.brandingTextLineHeight
-      : DEFAULT_LAYOUT_SETTINGS.brandingTextLineHeight,
-  brandingSectionPadding:
-    typeof layout?.brandingSectionPadding === 'number' && layout.brandingSectionPadding >= 0
-      ? layout.brandingSectionPadding
-      : DEFAULT_LAYOUT_SETTINGS.brandingSectionPadding,
-});
+// Helper function to validate and fallback number values for wrong provisioning or manual config file edits
+const fallbackNumber = (value: number | undefined, predicate: (n: number) => boolean, fallback: number) =>
+  typeof value === 'number' && predicate(value) ? value : fallback;
+
+export const resolveLayoutSettings = (layout?: LayoutSettings | null): ResolvedLayoutSettings => {
+  const panels = layout?.panels;
+  const logo = layout?.logo;
+  const pageNumber = layout?.pageNumber;
+
+  return {
+    reportTheme: layout?.reportTheme ?? DEFAULT_LAYOUT_SETTINGS.reportTheme,
+    orientation: layout?.orientation ?? DEFAULT_LAYOUT_SETTINGS.orientation,
+    panels: {
+      perPage: fallbackNumber(panels?.perPage, (n) => n > 0, DEFAULT_LAYOUT_SETTINGS.panels.perPage),
+      spacing: fallbackNumber(panels?.spacing, (n) => n >= 0, DEFAULT_LAYOUT_SETTINGS.panels.spacing),
+      title: {
+        enabled: panels?.title?.enabled ?? DEFAULT_LAYOUT_SETTINGS.panels.title.enabled,
+        fontFamily: panels?.title?.fontFamily ?? DEFAULT_LAYOUT_SETTINGS.panels.title.fontFamily,
+        fontSize: fallbackNumber(panels?.title?.fontSize, (n) => n > 0, DEFAULT_LAYOUT_SETTINGS.panels.title.fontSize),
+        fontColor: panels?.title?.fontColor ?? DEFAULT_LAYOUT_SETTINGS.panels.title.fontColor,
+      },
+      width: fallbackNumber(panels?.width, (n) => n > 0, DEFAULT_LAYOUT_SETTINGS.panels.width),
+      height: fallbackNumber(panels?.height, (n) => n > 0, DEFAULT_LAYOUT_SETTINGS.panels.height),
+    },
+    logo: {
+      enabled: logo?.enabled ?? Boolean(logo?.url ?? DEFAULT_LAYOUT_SETTINGS.logo.url),
+      url: logo?.url?.trim() || DEFAULT_LAYOUT_SETTINGS.logo.url,
+      placement: logo?.placement ?? DEFAULT_LAYOUT_SETTINGS.logo.placement,
+      alignment: logo?.alignment ?? DEFAULT_LAYOUT_SETTINGS.logo.alignment,
+      width: fallbackNumber(logo?.width, (n) => n > 0, DEFAULT_LAYOUT_SETTINGS.logo.width),
+      height: fallbackNumber(logo?.height, (n) => n > 0, DEFAULT_LAYOUT_SETTINGS.logo.height),
+    },
+    pageNumber: {
+      enabled: pageNumber?.enabled ?? DEFAULT_LAYOUT_SETTINGS.pageNumber.enabled,
+      placement: pageNumber?.placement ?? DEFAULT_LAYOUT_SETTINGS.pageNumber.placement,
+      alignment: pageNumber?.alignment ?? DEFAULT_LAYOUT_SETTINGS.pageNumber.alignment,
+      language: pageNumber?.language ?? DEFAULT_LAYOUT_SETTINGS.pageNumber.language,
+      fontFamily: pageNumber?.fontFamily ?? DEFAULT_LAYOUT_SETTINGS.pageNumber.fontFamily,
+      fontSize: fallbackNumber(pageNumber?.fontSize, (n) => n > 0, DEFAULT_LAYOUT_SETTINGS.pageNumber.fontSize),
+      fontColor: pageNumber?.fontColor ?? DEFAULT_LAYOUT_SETTINGS.pageNumber.fontColor,
+    },
+    customElements: layout?.customElements ?? DEFAULT_LAYOUT_SETTINGS.customElements,
+    pageMargin: fallbackNumber(layout?.pageMargin, (n) => n >= 0, DEFAULT_LAYOUT_SETTINGS.pageMargin),
+    brandingTextLineHeight: fallbackNumber(
+      layout?.brandingTextLineHeight,
+      (n) => n > 0,
+      DEFAULT_LAYOUT_SETTINGS.brandingTextLineHeight
+    ),
+    brandingSectionPadding: fallbackNumber(
+      layout?.brandingSectionPadding,
+      (n) => n >= 0,
+      DEFAULT_LAYOUT_SETTINGS.brandingSectionPadding
+    ),
+  };
+};

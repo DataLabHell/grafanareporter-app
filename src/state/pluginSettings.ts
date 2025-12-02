@@ -14,12 +14,10 @@
  * limitations under the License.
  */
 
-import { DEFAULT_LAYOUT_SETTINGS, ReporterPluginSettings } from '../types/reporting';
+import { ReporterPluginSettings, resolveLayoutSettings } from '../types/reporting';
 
 let provisionedSettings: ReporterPluginSettings | undefined;
 let globalSettings: ReporterPluginSettings | undefined;
-
-const cloneDefaultLayout = () => ({ ...DEFAULT_LAYOUT_SETTINGS });
 
 const normalizeSettings = (settings?: ReporterPluginSettings | null): ReporterPluginSettings | undefined => {
   if (!settings || Object.keys(settings).length === 0) {
@@ -33,7 +31,8 @@ const normalizeSettings = (settings?: ReporterPluginSettings | null): ReporterPl
 };
 
 const mergeSettings = (...layers: Array<ReporterPluginSettings | undefined>): ReporterPluginSettings => {
-  const merged: ReporterPluginSettings = { layout: cloneDefaultLayout() };
+  let mergedLayout: ReporterPluginSettings['layout'];
+  let themePreference: ReporterPluginSettings['themePreference'];
 
   for (const layer of layers) {
     if (!layer) {
@@ -41,18 +40,23 @@ const mergeSettings = (...layers: Array<ReporterPluginSettings | undefined>): Re
     }
 
     if (layer.themePreference !== undefined) {
-      merged.themePreference = layer.themePreference;
+      themePreference = layer.themePreference;
+    } else if ((layer.layout as any)?.reportTheme !== undefined) {
+      themePreference = (layer.layout as any).reportTheme;
     }
 
     if (layer.layout) {
-      merged.layout = {
-        ...merged.layout,
+      mergedLayout = {
+        ...mergedLayout,
         ...layer.layout,
       };
     }
   }
 
-  return merged;
+  return {
+    themePreference,
+    layout: mergedLayout ? resolveLayoutSettings(mergedLayout) : undefined,
+  };
 };
 
 export const ensureReporterSettings = (settings?: ReporterPluginSettings | null): ReporterPluginSettings =>
