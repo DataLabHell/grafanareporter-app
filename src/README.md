@@ -71,6 +71,13 @@ The overrides are defined like: **Provisioning → Global Settings → Advanced 
 | `pageNumberPlacement`   | `header` or `footer`. Where "Page X of Y" renders (requires `pageNumberEnabled=true`).    | `pageNumberPlacement=footer`         |                                                  |
 | `pageNumberAlignment`   | `left`/`center`/`right`. Alignment for "Page X of Y" (requires `pageNumberEnabled=true`). | `pageNumberAlignment=right`          |                                                  |
 | `pageNumberLanguage`    | `en`/`de`. Language ("Page X of Y"/"Seite X von Y") (requires `pageNumberEnabled=true`).  | `pageNumberLanguage=de`              |                                                  |
+| `pageNumberFontSize`    | Page number font size in points (requires `pageNumberEnabled=true`).                      | `pageNumberFontSize=10`              |                                                  |
+| `pageNumberFontFamily`  | Page number font family (requires `pageNumberEnabled=true`).                              | `pageNumberFontFamily=Arial`         |                                                  |
+| `pageNumberFontColor`   | Page number font color (requires `pageNumberEnabled=true`).                               | `pageNumberFontColor=%23000`         |                                                  |
+| `headerPadding`         | Header padding in points.                                                                 | `headerPadding=8`                    |                                                  |
+| `headerLineHeight`      | Header text line height in points.                                                        | `headerLineHeight=12`                |                                                  |
+| `footerPadding`         | Footer padding in points.                                                                 | `footerPadding=8`                    |                                                  |
+| `footerLineHeight`      | Footer text line height in points.                                                        | `footerLineHeight=12`                |                                                  |
 | `var-<name>`            | Repeat for every dashboard variable value.                                                | `var-region=us&var-region=eu`        |                                                  |
 | `customElements`        | Display custom elements like additional texts or images, see custom elements below.       | `custom0Type=text&custom0Content=Hi` | Experimental: repeat `custom0*`, `custom1*`, ... |
 | `logoUrl`               | URL or base64 image. Configure this globally; query parameter support is not available.   |                                      | Configure in plugin settings or provisioning.    |
@@ -119,18 +126,22 @@ apps:
         orientation: 'portrait'
         reportTheme: 'light'
         pageMargin: 32
-        brandingTextLineHeight: 12
-        brandingSectionPadding: 6
+        header:
+          padding: 8
+          lineHeight: 12
+        footer:
+          padding: 8
+          lineHeight: 12
         panels:
           perPage: 4
           spacing: 16
+          width: 3200
+          height: 1800
           title:
             enabled: true
             fontFamily: 'Arial, sans-serif'
             fontSize: 22
             fontColor: '#000000'
-          width: 3200
-          height: 1800
         logo:
           enabled: true
           url: '/public/plugins/datalabhell-grafanareporter-app/img/dlh-logo.svg'

@@ -16,8 +16,28 @@
 
 import { PanelModel } from '../types/grafana';
 import { LayoutSettings, resolveLayoutSettings } from '../types/reporting';
+import { mergeLayoutPatch } from './layoutForm';
 import { panelsGrafana121, panelsGrafana123 } from './__fixtures__/dashboardPanels';
 import { __testables } from './reportGenerator';
+
+jest.mock('jspdf', () => {
+  const mockInstance = {
+    addImage: jest.fn(),
+    save: jest.fn(),
+    text: jest.fn(),
+    setFont: jest.fn(),
+    setFontSize: jest.fn(),
+    setTextColor: jest.fn(),
+    getTextDimensions: jest.fn(() => ({ w: 0, h: 0 })),
+    internal: { pageSize: { getWidth: () => 100, getHeight: () => 100 } },
+    output: jest.fn(),
+  };
+
+  return {
+    jsPDF: jest.fn(() => mockInstance),
+    TextOptionsLight: {},
+  };
+});
 
 describe('reportGenerator helpers', () => {
   describe('flattenPanels', () => {
@@ -68,7 +88,7 @@ describe('reportGenerator helpers', () => {
         },
       };
 
-      const resolved = resolveLayoutSettings({ ...base, ...override });
+      const resolved = resolveLayoutSettings(mergeLayoutPatch(base, override));
       expect(resolved.panels.perPage).toBe(4);
       expect(resolved.panels.spacing).toBe(24);
       expect(resolved.pageNumber.enabled).toBe(false);

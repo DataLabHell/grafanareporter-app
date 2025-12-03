@@ -16,7 +16,7 @@
 
 import { RawTimeRange } from '@grafana/data';
 import { DashboardTemplateVariable } from '../../types/grafana';
-import { LayoutAlignment, LayoutPlacement, LayoutSettings, VariableValueMap } from '../../types/reporting';
+import { CustomElement, LayoutAlignment, LayoutPlacement, LayoutSettings, VariableValueMap } from '../../types/reporting';
 import { LayoutNumericField } from '../../utils/layoutValidation';
 import { AdvancedSettingsSnapshot } from './types';
 
@@ -49,6 +49,10 @@ const PARAMS = {
   pageNumberFontFamily: 'pageNumberFontFamily',
   pageNumberFontSize: 'pageNumberFontSize',
   pageNumberFontColor: 'pageNumberFontColor',
+  headerLineHeight: 'headerLineHeight',
+  headerPadding: 'headerPadding',
+  footerPadding: 'footerPadding',
+  footerLineHeight: 'footerLineHeight',
 };
 
 export const normalizeRawTimeInput = (
@@ -107,7 +111,78 @@ export const formatVariablesText = (variables?: VariableValueMap) => {
 
   return Object.entries(variables)
     .map(([name, entries]) => `${name}=${entries.map((entry) => entry.text ?? entry.value).join(',')}`)
-    .join('\n');
+  .join('\n');
+};
+
+const parseCustomElements = (params: URLSearchParams): CustomElement[] => {
+  const byIndex: Record<number, Partial<CustomElement> & Record<string, string | undefined>> = {};
+  const getBucket = (index: number) => {
+    byIndex[index] = byIndex[index] ?? {};
+    return byIndex[index];
+  };
+
+  params.forEach((value, key) => {
+    const match = key.match(/^custom(\d+)(Type|Content|Placement|Alignment|FontFamily|FontSize|FontColor)$/i);
+    if (!match) {
+      return;
+    }
+    const index = Number(match[1]);
+    if (Number.isNaN(index)) {
+      return;
+    }
+    const bucket = getBucket(index);
+    const field = match[2].toLowerCase();
+    bucket[field] = value;
+  });
+
+  const toPlacement = (value?: string): LayoutPlacement | undefined =>
+    value === 'header' || value === 'footer' ? value : undefined;
+  const toAlignment = (value?: string): LayoutAlignment | undefined =>
+    value === 'left' || value === 'center' || value === 'right' ? value : undefined;
+  const toNumber = (value?: string): number | undefined => {
+    if (value === undefined || value === null) {
+      return undefined;
+    }
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric : undefined;
+  };
+
+  const elements: CustomElement[] = [];
+  Object.keys(byIndex)
+    .map((key) => Number(key))
+    .sort((a, b) => a - b)
+    .forEach((index) => {
+      const raw = byIndex[index];
+      const type = (raw.type as CustomElement['type'] | undefined) ?? (raw.customtype as CustomElement['type']);
+      if (type !== 'text') {
+        return;
+      }
+      const placement = toPlacement(raw.placement as string);
+      const alignment = toAlignment(raw.alignment as string);
+      const content = raw.content as string | undefined;
+      if (!placement || !alignment || !content) {
+        return;
+      }
+      const fontSize = toNumber(raw.fontsize as string | undefined);
+      const element: CustomElement = {
+        type: 'text',
+        content,
+        placement,
+        alignment,
+      };
+      if (raw.fontfamily) {
+        element.fontFamily = raw.fontfamily as string;
+      }
+      if (fontSize !== undefined) {
+        element.fontSize = fontSize;
+      }
+      if (raw.fontcolor) {
+        element.fontColor = raw.fontcolor as string;
+      }
+      elements.push(element);
+    });
+
+  return elements;
 };
 
 export const convertDashboardVariablesToMap = (
@@ -227,6 +302,7 @@ export const parseLayoutOverrides = (params: URLSearchParams): ParsedLayoutOverr
   const pageNumberLanguage = params.get(PARAMS.pageNumberLanguage);
   const pageNumberFontFamily = params.get(PARAMS.pageNumberFontFamily);
   const pageNumberFontColor = params.get(PARAMS.pageNumberFontColor);
+  const customElements = parseCustomElements(params);
 
   const numericPairs: Array<[LayoutNumericField, string | null]> = [
     ['panelsPerPage', params.get(PARAMS.panelsPerPage)],
@@ -238,6 +314,10 @@ export const parseLayoutOverrides = (params: URLSearchParams): ParsedLayoutOverr
     ['pageMargin', params.get(PARAMS.pageMargin)],
     ['logoWidth', params.get(PARAMS.logoWidth)],
     ['logoHeight', params.get(PARAMS.logoHeight)],
+    ['headerLineHeight', params.get(PARAMS.headerLineHeight)],
+    ['headerPadding', params.get(PARAMS.headerPadding)],
+    ['footerPadding', params.get(PARAMS.footerPadding)],
+    ['footerLineHeight', params.get(PARAMS.footerLineHeight)],
   ];
 
   numericPairs.forEach(([field, value]) => {
@@ -299,6 +379,10 @@ export const parseLayoutOverrides = (params: URLSearchParams): ParsedLayoutOverr
   }
   if (pageAlignment === 'left' || pageAlignment === 'center' || pageAlignment === 'right') {
     layout.pageNumber = { ...(layout.pageNumber || {}), alignment: pageAlignment as LayoutAlignment };
+  }
+
+  if (customElements.length) {
+    layout.customElements = customElements;
   }
 
   return {
@@ -405,6 +489,31 @@ export const buildReportParams = (
   }
 
   params.set(PARAMS.pageMargin, String(settings.layout.pageMargin));
+  params.set(PARAMS.headerLineHeight, String(settings.layout.header.lineHeight));
+  params.set(PARAMS.headerPadding, String(settings.layout.header.padding));
+  params.set(PARAMS.footerPadding, String(settings.layout.footer.padding));
+  params.set(PARAMS.footerLineHeight, String(settings.layout.footer.lineHeight));
+
+  if (settings.layout.customElements?.length) {
+    settings.layout.customElements
+      .filter((element) => element.type === 'text')
+      .forEach((element, index) => {
+        const prefix = `custom${index}`;
+        params.set(`${prefix}Type`, element.type);
+        params.set(`${prefix}Placement`, element.placement);
+        params.set(`${prefix}Alignment`, element.alignment);
+        params.set(`${prefix}Content`, element.content);
+        if (element.fontSize !== undefined) {
+          params.set(`${prefix}FontSize`, String(element.fontSize));
+        }
+        if (element.fontFamily) {
+          params.set(`${prefix}FontFamily`, element.fontFamily);
+        }
+        if (element.fontColor) {
+          params.set(`${prefix}FontColor`, element.fontColor);
+        }
+      });
+  }
 
   const vars = parseVariablesText(settings.variablesText);
   if (vars) {

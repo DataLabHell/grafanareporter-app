@@ -25,24 +25,36 @@ export type LayoutNumericField =
   | 'pageMargin'
   | 'logoWidth'
   | 'logoHeight'
-  | 'brandingTextLineHeight'
-  | 'brandingSectionPadding'
+  | 'headerLineHeight'
+  | 'headerPadding'
+  | 'footerPadding'
+  | 'footerLineHeight'
   | 'pageNumberFontSize';
 
 export type LayoutDraft = Record<LayoutNumericField, string>;
 export type LayoutDraftErrors = Partial<Record<LayoutNumericField, string>>;
 
-const CONSTRAINTS: Record<LayoutNumericField, { label: string; min: number }> = {
-  panelsPerPage: { label: 'Panels per page', min: 1 },
-  panelsSpacing: { label: 'Panels spacing', min: 0 },
+const CONSTRAINTS: Record<LayoutNumericField, { label: string; min: number; description?: string }> = {
+  panelsPerPage: {
+    label: 'Panels per page',
+    min: 1,
+    description: 'Controls how many panels are rendered on each PDF page.',
+  },
+  panelsSpacing: {
+    label: 'Panels spacing',
+    min: 0,
+    description: 'Vertical space between panels on the same page.',
+  },
   panelsTitleFontSize: { label: 'Panels title font size', min: 1 },
   panelsWidth: { label: 'Panels render width', min: 100 },
   panelsHeight: { label: 'Panels render height', min: 100 },
   pageMargin: { label: 'Page margin', min: 0 },
   logoWidth: { label: 'Logo width', min: 1 },
   logoHeight: { label: 'Logo height', min: 1 },
-  brandingTextLineHeight: { label: 'Text height', min: 1 },
-  brandingSectionPadding: { label: 'Branding padding', min: 0 },
+  headerLineHeight: { label: 'Header text height', min: 1 },
+  headerPadding: { label: 'Header padding', min: 0 },
+  footerPadding: { label: 'Footer padding', min: 0 },
+  footerLineHeight: { label: 'Footer text height', min: 1 },
   pageNumberFontSize: { label: 'Page number font size', min: 1 },
 };
 
@@ -58,8 +70,10 @@ export const createLayoutDraft = (layout: ResolvedLayoutSettings): LayoutDraft =
   pageMargin: String(layout.pageMargin),
   logoWidth: String(layout.logo.width),
   logoHeight: String(layout.logo.height),
-  brandingTextLineHeight: String(layout.brandingTextLineHeight),
-  brandingSectionPadding: String(layout.brandingSectionPadding),
+  headerLineHeight: String(layout.header.lineHeight),
+  headerPadding: String(layout.header.padding),
+  footerPadding: String(layout.footer.padding),
+  footerLineHeight: String(layout.footer.lineHeight),
 });
 
 const parseNumberInput = (value: string) => {
@@ -74,6 +88,7 @@ const parseNumberInput = (value: string) => {
 export const validateLayoutDraft = (
   draft: LayoutDraft
 ): { values?: Record<LayoutNumericField, number>; errors?: LayoutDraftErrors } => {
+  // We validate numeric inputs in a flat shape, then reconstruct nested layout parts downstream.
   const values = {} as Record<LayoutNumericField, number>;
   const errors: LayoutDraftErrors = {};
 
@@ -124,9 +139,21 @@ export const mergeDraftValues = (
       width: values.logoWidth ?? base.logo.width,
       height: values.logoHeight ?? base.logo.height,
     },
+    pageNumber: {
+      ...base.pageNumber,
+      fontSize: values.pageNumberFontSize ?? base.pageNumber.fontSize,
+    },
     pageMargin: values.pageMargin ?? base.pageMargin,
-    brandingTextLineHeight: values.brandingTextLineHeight ?? base.brandingTextLineHeight,
-    brandingSectionPadding: values.brandingSectionPadding ?? base.brandingSectionPadding,
+    header: {
+      ...base.header,
+      lineHeight: values.headerLineHeight ?? base.header.lineHeight,
+      padding: values.headerPadding ?? base.header.padding,
+    },
+    footer: {
+      ...base.footer,
+      padding: values.footerPadding ?? base.footer.padding,
+      lineHeight: values.footerLineHeight ?? base.footer.lineHeight,
+    },
   };
 };
 
