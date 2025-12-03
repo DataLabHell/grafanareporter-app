@@ -25,8 +25,14 @@ export type LayoutAlignment = 'left' | 'center' | 'right';
 export type BrandingItemType = 'logo' | 'pageNumber' | 'text';
 
 export const orientationOptions = [
-  { label: 'Portrait', value: 'portrait' as ReportOrientation },
-  { label: 'Landscape', value: 'landscape' as ReportOrientation },
+  { label: 'Portrait', icon: 'gf-portrait', value: 'portrait' as ReportOrientation },
+  { label: 'Landscape', icon: 'gf-landscape', value: 'landscape' as ReportOrientation },
+];
+
+// Use icons from the supported Grafana set (see iconography overview).
+export const themeOptions = [
+  { label: 'Dark', icon: 'circle-mono', value: 'dark' as ReportTheme },
+  { label: 'Light', icon: 'circle', value: 'light' as ReportTheme },
 ];
 
 export const placementOptions = [
@@ -39,33 +45,6 @@ export const alignmentOptions = [
   { label: 'Center', value: 'center' as LayoutAlignment },
   { label: 'Right', value: 'right' as LayoutAlignment },
 ];
-
-export interface BrandingItemBase {
-  id: string;
-  type: BrandingItemType;
-  placement: LayoutPlacement;
-  alignment: LayoutAlignment;
-}
-
-export interface BrandingLogoItem extends BrandingItemBase {
-  type: 'logo';
-  logoUrl: string;
-  maxWidth?: number;
-  maxHeight?: number;
-}
-
-export interface BrandingPageNumberItem extends BrandingItemBase {
-  type: 'pageNumber';
-  label?: string;
-}
-
-export interface BrandingTextItem extends BrandingItemBase {
-  type: 'text';
-  text: string;
-  fontSize?: number;
-}
-
-export type BrandingItem = BrandingLogoItem | BrandingPageNumberItem | BrandingTextItem;
 
 export interface VariableValue {
   value: string;
@@ -128,14 +107,22 @@ export interface LayoutSettings {
   pageNumber?: PageNumberSettings;
   customElements?: CustomElement[];
   pageMargin?: number;
-  brandingTextLineHeight?: number;
-  brandingSectionPadding?: number;
+  header?: {
+    padding?: number;
+    lineHeight?: number;
+  };
+  footer?: {
+    padding?: number;
+    lineHeight?: number;
+  };
 }
 
 export type ResolvedLayoutSettings = Required<LayoutSettings> & {
   panels: Required<PanelsLayoutSettings> & { title: Required<PanelTitleSettings> };
   logo: Required<LogoSettings>;
   pageNumber: Required<PageNumberSettings>;
+  header: { padding: number; lineHeight: number };
+  footer: { padding: number; lineHeight: number };
 };
 
 export interface ReporterPluginSettings {
@@ -151,12 +138,12 @@ export const DEFAULT_LAYOUT_SETTINGS: ResolvedLayoutSettings = {
     spacing: 16,
     title: {
       enabled: true,
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Arial',
       fontSize: 14,
       fontColor: '#000000',
     },
-    width: 1600,
-    height: 900,
+    width: 3200,
+    height: 1800,
   },
   logo: {
     enabled: true,
@@ -171,14 +158,20 @@ export const DEFAULT_LAYOUT_SETTINGS: ResolvedLayoutSettings = {
     placement: 'footer',
     alignment: 'right',
     language: 'en',
-    fontFamily: 'Arial, sans-serif',
+    fontFamily: 'Arial',
     fontSize: 10,
     fontColor: '#000000',
   },
   customElements: [],
   pageMargin: 32,
-  brandingTextLineHeight: 12,
-  brandingSectionPadding: 6,
+  header: {
+    padding: 6,
+    lineHeight: 12,
+  },
+  footer: {
+    padding: 6,
+    lineHeight: 12,
+  },
 };
 
 // Helper function to validate and fallback number values for wrong provisioning or manual config file edits
@@ -189,6 +182,8 @@ export const resolveLayoutSettings = (layout?: LayoutSettings | null): ResolvedL
   const panels = layout?.panels;
   const logo = layout?.logo;
   const pageNumber = layout?.pageNumber;
+  const header = layout?.header;
+  const footer = layout?.footer;
 
   return {
     reportTheme: layout?.reportTheme ?? DEFAULT_LAYOUT_SETTINGS.reportTheme,
@@ -224,15 +219,13 @@ export const resolveLayoutSettings = (layout?: LayoutSettings | null): ResolvedL
     },
     customElements: layout?.customElements ?? DEFAULT_LAYOUT_SETTINGS.customElements,
     pageMargin: fallbackNumber(layout?.pageMargin, (n) => n >= 0, DEFAULT_LAYOUT_SETTINGS.pageMargin),
-    brandingTextLineHeight: fallbackNumber(
-      layout?.brandingTextLineHeight,
-      (n) => n > 0,
-      DEFAULT_LAYOUT_SETTINGS.brandingTextLineHeight
-    ),
-    brandingSectionPadding: fallbackNumber(
-      layout?.brandingSectionPadding,
-      (n) => n >= 0,
-      DEFAULT_LAYOUT_SETTINGS.brandingSectionPadding
-    ),
+    header: {
+      padding: fallbackNumber(header?.padding, (n) => n >= 0, DEFAULT_LAYOUT_SETTINGS.header.padding),
+      lineHeight: fallbackNumber(header?.lineHeight, (n) => n > 0, DEFAULT_LAYOUT_SETTINGS.header.lineHeight),
+    },
+    footer: {
+      padding: fallbackNumber(footer?.padding, (n) => n >= 0, DEFAULT_LAYOUT_SETTINGS.footer.padding),
+      lineHeight: fallbackNumber(footer?.lineHeight, (n) => n > 0, DEFAULT_LAYOUT_SETTINGS.footer.lineHeight),
+    },
   };
 };

@@ -37,6 +37,17 @@ export const getReportStyles = (theme: GrafanaTheme2) => {
       flex-direction: column;
       gap: ${theme.spacing(0.5)};
     `,
+    controlGroupRow: css`
+      display: flex;
+      align-items: flex-end;
+      gap: ${theme.spacing(1)};
+      flex: 1 1 360px;
+      min-width: 320px;
+    `,
+    inlineField: css`
+      flex: 1;
+      margin-bottom: 0;
+    `,
     headerRow: css`
       display: flex;
       align-items: center;

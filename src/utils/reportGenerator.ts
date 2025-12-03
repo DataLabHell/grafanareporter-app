@@ -798,12 +798,29 @@ const getBrandingReservedHeight = (placement: LayoutPlacement, layout: ResolvedL
       : undefined;
   const showNumbers = layout.pageNumber.enabled && layout.pageNumber.placement === placement;
 
-  if (!logoDimensions && !showNumbers) {
+  let maxHeight = logoDimensions?.height ?? 0;
+
+  const textLineHeight = placement === 'footer' ? layout.footer.lineHeight : layout.header.lineHeight;
+  if (showNumbers) {
+    maxHeight = Math.max(maxHeight, textLineHeight);
+  }
+
+  layout.customElements
+    .filter((element) => element.type === 'text' && element.placement === placement)
+    .forEach((element) => {
+      if (element.fontSize !== undefined) {
+        maxHeight = Math.max(maxHeight, element.fontSize);
+      } else {
+        maxHeight = Math.max(maxHeight, textLineHeight);
+      }
+    });
+
+  if (maxHeight <= 0) {
     return 0;
   }
 
-  const contentHeight = Math.max(logoDimensions?.height ?? 0, showNumbers ? layout.brandingTextLineHeight : 0);
-  return contentHeight > 0 ? contentHeight + layout.brandingSectionPadding * 2 : 0;
+  const padding = placement === 'header' ? layout.header.padding : layout.footer.padding;
+  return maxHeight + padding * 2;
 };
 
 const fitRectangle = (maxWidth: number, maxHeight: number, originalWidth: number, originalHeight: number) => {
@@ -865,10 +882,10 @@ const renderBrandingArea = (
   const showNumbers = layoutSettings.pageNumber.enabled && layoutSettings.pageNumber.placement === placement;
 
   if (!logoDimensions && !showNumbers) {
-    return;
+    // We may still render custom elements; continue.
   }
 
-  const padding = layoutSettings.brandingSectionPadding;
+  const padding = placement === 'header' ? layoutSettings.header.padding : layoutSettings.footer.padding;
   const areaTop = placement === 'header' ? padding : pageHeight - areaHeight + padding;
   const centerY = areaTop + (areaHeight - padding * 2) / 2;
 
@@ -891,8 +908,14 @@ const renderBrandingArea = (
     } else {
       label = `Page ${pageNumber} of ${totalPages}`;
     }
-    const textY = centerY + layoutSettings.brandingTextLineHeight / 3;
-    pdf.setFontSize(10);
+    const textLineHeight = placement === 'footer' ? layoutSettings.footer.lineHeight : layoutSettings.header.lineHeight;
+    const textY = centerY + textLineHeight / 3;
+    pdf.setFont(layoutSettings.pageNumber.fontFamily, 'normal', 'normal');
+    pdf.setFontSize(layoutSettings.pageNumber.fontSize);
+    const pageNumberColor = parseHexColor(layoutSettings.pageNumber.fontColor);
+    if (pageNumberColor) {
+      pdf.setTextColor(pageNumberColor.r, pageNumberColor.g, pageNumberColor.b);
+    }
     const { textX, textOptions } = getAlignedTextPosition(
       layoutSettings.pageNumber.alignment,
       pageWidth,
@@ -900,6 +923,22 @@ const renderBrandingArea = (
     );
     pdf.text(label, textX, textY, textOptions);
   }
+
+  layoutSettings.customElements
+    .filter((element) => element.type === 'text' && element.placement === placement)
+    .forEach((element) => {
+      const fontSize =
+        element.fontSize ?? (placement === 'footer' ? layoutSettings.footer.lineHeight : layoutSettings.header.lineHeight);
+      pdf.setFont(element.fontFamily ?? layoutSettings.pageNumber.fontFamily, 'normal', 'normal');
+      pdf.setFontSize(fontSize);
+      const color = parseHexColor(element.fontColor ?? layoutSettings.pageNumber.fontColor);
+      if (color) {
+        pdf.setTextColor(color.r, color.g, color.b);
+      }
+      const textY = centerY + fontSize / 3;
+      const { textX, textOptions } = getAlignedTextPosition(element.alignment, pageWidth, layoutSettings.pageMargin);
+      pdf.text(element.content, textX, textY, textOptions);
+    });
 };
 
 const getAlignedX = (alignment: LayoutAlignment, contentWidth: number, pageWidth: number, pageMargin: number) => {

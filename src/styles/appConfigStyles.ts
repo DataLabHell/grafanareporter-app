@@ -24,6 +24,7 @@ export const getAppConfigStyles = (theme: GrafanaTheme2) => {
       cursor: pointer;
       background: ${theme.colors.background.secondary};
       font-size: ${theme.typography.bodySmall.fontSize};
+      flex-wrap: nowrap;
 
       input[type='file'] {
         position: absolute;
@@ -45,14 +46,8 @@ export const getAppConfigStyles = (theme: GrafanaTheme2) => {
     `,
     logoRow: css`
       display: flex;
-      flex-wrap: wrap;
       gap: ${theme.spacing(1)};
       align-items: center;
-
-      input[type='text'] {
-        flex: 1;
-        min-width: 220px;
-      }
     `,
     logoPreview: css`
       margin-top: ${theme.spacing(1)};

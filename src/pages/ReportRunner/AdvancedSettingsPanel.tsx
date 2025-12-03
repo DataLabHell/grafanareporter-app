@@ -46,13 +46,15 @@ interface Props {
   onVariablesChange: (value: string) => void;
   reportUrl: string;
   layout: LayoutSettings;
+  setLayout: React.Dispatch<React.SetStateAction<LayoutSettings>>;
   layoutDraft: LayoutDraft;
   layoutErrors?: LayoutDraftErrors;
-  onLayoutChange: (next: Partial<LayoutSettings>) => void;
   onLayoutInputChange: (field: LayoutNumericField, value: string) => void;
   isGlobalOverridesOpen: boolean;
   onGlobalOverridesToggle: () => void;
   onToggle: () => void;
+  disabled?: boolean;
+  onRequireDashboard?: () => void;
 }
 
 export const AdvancedSettingsPanel = ({
@@ -70,16 +72,22 @@ export const AdvancedSettingsPanel = ({
   onVariablesChange,
   reportUrl,
   layout,
+  setLayout,
   layoutDraft,
   layoutErrors,
-  onLayoutChange,
   onLayoutInputChange,
   isGlobalOverridesOpen,
   onGlobalOverridesToggle,
+  disabled = false,
+  onRequireDashboard,
 }: Props) => {
   const styles = useStyles2(getAdvancedConfigStyles);
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (disabled) {
+      onRequireDashboard?.();
+      return;
+    }
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
       onToggle();
@@ -96,7 +104,20 @@ export const AdvancedSettingsPanel = ({
 
   return (
     <>
-      <div className={styles.header} role="button" tabIndex={0} onClick={onToggle} onKeyDown={handleKeyDown}>
+      <div
+        className={styles.header}
+        role="button"
+        tabIndex={disabled ? -1 : 0}
+        aria-disabled={disabled}
+        onClick={(e) => {
+          if (disabled) {
+            onRequireDashboard?.();
+            return;
+          }
+          onToggle();
+        }}
+        onKeyDown={handleKeyDown}
+      >
         <div>
           <div className={styles.title}>Advanced settings</div>
           <div className={styles.description}>Use this section to customize the report request.</div>
@@ -107,8 +128,13 @@ export const AdvancedSettingsPanel = ({
           type="button"
           fill="text"
           aria-label="Toggle advanced settings"
+          disabled={disabled}
           onClick={(event) => {
             event.stopPropagation();
+            if (disabled) {
+              onRequireDashboard?.();
+              return;
+            }
             onToggle();
           }}
         />
@@ -140,9 +166,9 @@ export const AdvancedSettingsPanel = ({
             isOpen={isGlobalOverridesOpen}
             onToggle={onGlobalOverridesToggle}
             layout={layout}
+            setLayout={setLayout}
             layoutDraft={layoutDraft}
             layoutErrors={layoutErrors}
-            onLayoutChange={onLayoutChange}
             onLayoutInputChange={onLayoutInputChange}
           />
 

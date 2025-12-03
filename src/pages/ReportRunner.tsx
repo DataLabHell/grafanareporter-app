@@ -17,7 +17,7 @@
 import { SelectableValue, TimeRange, dateMath, dateTime } from '@grafana/data';
 import { PluginPage, config, getBackendSrv } from '@grafana/runtime';
 import { TimeZone } from '@grafana/schema';
-import { Alert, Button, IconButton, Select, Spinner, useStyles2 } from '@grafana/ui';
+import { Alert, Button, Field, IconButton, Select, Spinner, useStyles2 } from '@grafana/ui';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { getReportStyles } from 'styles/reportStyles';
@@ -31,6 +31,7 @@ import {
   ResolvedLayoutSettings,
   resolveLayoutSettings,
 } from '../types/reporting';
+import { mergeLayoutPatch, numericFieldToPatch } from '../utils/layoutForm';
 import {
   LAYOUT_NUMERIC_CONSTRAINTS,
   LayoutDraft,
@@ -101,8 +102,14 @@ const mergeLayouts = (
       ...pageNumberOverride,
     },
     pageMargin: override.pageMargin ?? base.pageMargin,
-    brandingTextLineHeight: override.brandingTextLineHeight ?? base.brandingTextLineHeight,
-    brandingSectionPadding: override.brandingSectionPadding ?? base.brandingSectionPadding,
+    header: {
+      ...base.header,
+      ...(override.header || {}),
+    },
+    footer: {
+      ...base.footer,
+      ...(override.footer || {}),
+    },
   };
 };
 
@@ -149,6 +156,7 @@ const ReportRunner = () => {
   const [status, setStatus] = useState<'idle' | 'working' | 'success' | 'error'>('idle');
   const [messages, setMessages] = useState<string[]>([]);
   const [error, setError] = useState<string>();
+  const [formError, setFormError] = useState<string>();
   const [dashboards, setDashboards] = useState<DashboardSearchHit[]>([]);
   const [dashboardsError, setDashboardsError] = useState<string>();
   const [isFetchingDashboards, setIsFetchingDashboards] = useState<boolean>(false);
@@ -301,6 +309,11 @@ const ReportRunner = () => {
           ...(override.pageNumber || {}),
         };
 
+        const mergedFooter = {
+          ...base.footer,
+          ...(override.footer || {}),
+        };
+
         return {
           ...base,
           ...override,
@@ -308,8 +321,7 @@ const ReportRunner = () => {
           logo: mergedLogo,
           pageNumber: mergedPageNumber,
           pageMargin: override.pageMargin ?? base.pageMargin,
-          brandingTextLineHeight: override.brandingTextLineHeight ?? base.brandingTextLineHeight,
-          brandingSectionPadding: override.brandingSectionPadding ?? base.brandingSectionPadding,
+          footer: mergedFooter,
         };
       };
 
@@ -505,15 +517,16 @@ const ReportRunner = () => {
     setAdvancedSettings((prev) => ({ ...prev, timezone: value }));
   const handleThemeChange = (value: ReportTheme) => setAdvancedSettings((prev) => ({ ...prev, theme: value }));
   const handleVariablesChange = (value: string) => setAdvancedSettings((prev) => ({ ...prev, variablesText: value }));
-  const handleLayoutChange = (next: Partial<LayoutSettings>) => {
+  const setLayoutFromForm: React.Dispatch<React.SetStateAction<LayoutSettings>> = (updater) => {
     setHasLayoutOverride(true);
-    setAdvancedSettings((prev) => ({
-      ...prev,
-      layout: resolveLayoutSettings({
-        ...prev.layout,
-        ...next,
-      }),
-    }));
+    setAdvancedSettings((prev) => {
+      const nextLayout =
+        typeof updater === 'function' ? (updater as (prev: LayoutSettings) => LayoutSettings)(prev.layout) : updater;
+      return {
+        ...prev,
+        layout: resolveLayoutSettings(nextLayout),
+      };
+    });
   };
   const handleLayoutInputChange = (field: LayoutNumericField, value: string) => {
     setHasLayoutOverride(true);
@@ -554,13 +567,7 @@ const ReportRunner = () => {
       [field]: undefined,
     }));
 
-    setAdvancedSettings((prev) => ({
-      ...prev,
-      layout: {
-        ...prev.layout,
-        [field]: numeric,
-      },
-    }));
+    setLayoutFromForm((prevLayout) => mergeLayoutPatch(prevLayout, numericFieldToPatch(field, numeric)));
   };
 
   const reportUrl = useMemo(() => {
@@ -622,9 +629,10 @@ const ReportRunner = () => {
     }
 
     if (!selectedUid) {
-      setError('Please select a dashboard before generating the report.');
+      setFormError('Select a dashboard first.');
       return;
     }
+    setFormError(undefined);
 
     const validation = validateLayoutDraft(layoutDraft);
     if (!validation.values) {
@@ -698,29 +706,40 @@ const ReportRunner = () => {
           />
         </div>
         <div className={styles.controls}>
-          <div className={styles.controlGroup}>
-            <label className={styles.label}>Dashboard</label>
-            <Select
-              options={dashboardsOptions}
-              value={selectedDashboardOption}
-              placeholder={isFetchingDashboards ? 'Loading dashboards…' : 'Select a dashboard'}
-              disabled={disableControls || isFetchingDashboards}
-              isClearable
-              onChange={(option) => {
-                const nextUid = option?.value ?? undefined;
-                setSelectedUid(nextUid);
-                setPrefillFromDashboard(Boolean(nextUid));
+          <div className={styles.controlGroupRow}>
+            <Field className={styles.inlineField} label="Dashboard" invalid={Boolean(formError)} error={formError}>
+              <Select
+                options={dashboardsOptions}
+                value={selectedDashboardOption}
+                placeholder={isFetchingDashboards ? 'Loading dashboards…' : 'Select a dashboard'}
+                disabled={disableControls || isFetchingDashboards}
+                isClearable
+                onChange={(option) => {
+                  const nextUid = option?.value ?? undefined;
+                  setSelectedUid(nextUid);
+                  setPrefillFromDashboard(Boolean(nextUid));
+                  if (nextUid) {
+                    setFormError(undefined);
+                  }
+                }}
+              />
+            </Field>
+            <Button
+              onClick={() => {
+                if (!selectedUid) {
+                  setFormError('Select a dashboard first.');
+                  return;
+                }
+                setFormError(undefined);
+                onManualGenerate();
               }}
-            />
+              disabled={!selectedUid || disableControls}
+              icon="document-info"
+              type="button"
+            >
+              Generate report
+            </Button>
           </div>
-          <Button
-            onClick={onManualGenerate}
-            disabled={!selectedUid || disableControls}
-            icon="document-info"
-            type="button"
-          >
-            Generate report
-          </Button>
         </div>
 
         {dashboardsError && (
@@ -769,12 +788,14 @@ const ReportRunner = () => {
           onVariablesChange={handleVariablesChange}
           reportUrl={reportUrl}
           layout={advancedSettings.layout}
+          setLayout={setLayoutFromForm}
           layoutDraft={layoutDraft}
           layoutErrors={layoutErrors}
-          onLayoutChange={handleLayoutChange}
           onLayoutInputChange={handleLayoutInputChange}
           isGlobalOverridesOpen={isGlobalOverridesOpen}
           onGlobalOverridesToggle={() => setIsGlobalOverridesOpen((open) => !open)}
+          disabled={!selectedUid}
+          onRequireDashboard={() => setFormError('Select a dashboard first.')}
         />
 
         <div className={styles.log}>
