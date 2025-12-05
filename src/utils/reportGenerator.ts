@@ -20,7 +20,7 @@ import { TimeZone } from '@grafana/schema';
 import { config, getBackendSrv, getTemplateSrv, locationService } from '@grafana/runtime';
 import { jsPDF, TextOptionsLight } from 'jspdf';
 import { lastValueFrom } from 'rxjs';
-import { DashboardApiResponse, DashboardModel, PanelModel } from '../types/grafana';
+import { DashboardApiResponse, DashboardModel, DashboardTemplateVariable, PanelModel } from '../types/grafana';
 import {
   LayoutAlignment,
   LayoutPlacement,
@@ -595,7 +595,7 @@ const getDashboardTemplateVariableValues = (dashboard?: DashboardModel): Variabl
       continue;
     }
 
-    const normalized = normalizeVariableEntries(variable.current?.value, variable.current?.text);
+    const normalized = extractVariableValues(variable);
     if (normalized.length) {
       values[variable.name] = normalized;
     }
@@ -613,7 +613,7 @@ const getTemplateVariableValues = (): VariableValueMap => {
       return;
     }
 
-    const normalized = normalizeVariableEntries(variable.current?.value, variable.current?.text);
+    const normalized = extractVariableValues(variable);
 
     if (normalized.length) {
       result[variable.name] = normalized;
@@ -628,10 +628,30 @@ const mergeVariableValues = (base: VariableValueMap, overrides?: VariableValueMa
     return base;
   }
 
-  return {
-    ...base,
-    ...overrides,
-  };
+  const result: VariableValueMap = { ...base };
+
+  for (const [name, overrideValues] of Object.entries(overrides)) {
+    if (!overrideValues?.length) {
+      result[name] = overrideValues;
+      continue;
+    }
+
+    const filtered = overrideValues.filter((entry) => !isAllValue(entry));
+
+    if (filtered.length) {
+      result[name] = filtered;
+      continue;
+    }
+
+    if (base?.[name]?.length) {
+      result[name] = base[name];
+      continue;
+    }
+
+    result[name] = overrideValues;
+  }
+
+  return result;
 };
 
 const buildVariablePairs = (values: VariableValueMap): Array<{ key: string; value: string }> =>
@@ -727,6 +747,64 @@ const normalizeVariableEntries = (value: any, text?: any): VariableValue[] => {
   }
 
   return normalized;
+};
+
+const extractVariableValues = (
+  variable: Partial<DashboardTemplateVariable> | Partial<TypedVariableModel>
+): VariableValue[] => {
+  const current = normalizeVariableEntries((variable as any)?.current?.value, (variable as any)?.current?.text);
+  const options = normalizeVariableOptions((variable as any)?.options);
+  const allSelected = current.some(isAllValue);
+
+  if (allSelected && options.length) {
+    const withoutAll = options.filter((option) => !isAllValue(option));
+    if (withoutAll.length) {
+      return withoutAll;
+    }
+  }
+
+  if (current.length) {
+    return current;
+  }
+
+  const selectedOptions = options.filter((option) => option.selected);
+  if (selectedOptions.length) {
+    return selectedOptions;
+  }
+
+  return options;
+};
+
+interface NormalizedVariableOption extends VariableValue {
+  selected: boolean;
+}
+
+const normalizeVariableOptions = (options?: Array<{ value?: any; text?: any; selected?: boolean }>) => {
+  if (!options?.length) {
+    return [] as NormalizedVariableOption[];
+  }
+
+  const normalized: NormalizedVariableOption[] = [];
+
+  for (const option of options) {
+    const source = option.value ?? option.text;
+    if (source === undefined || source === null || source === '') {
+      continue;
+    }
+    normalized.push({
+      value: String(source),
+      text: option.text !== undefined && option.text !== null && option.text !== '' ? String(option.text) : undefined,
+      selected: Boolean(option.selected),
+    });
+  }
+
+  return normalized;
+};
+
+const isAllValue = (entry: VariableValue) => {
+  const value = entry.value?.toString().toLowerCase();
+  const text = entry.text?.toString().toLowerCase();
+  return value === '$__all' || value === '__all' || text === 'all';
 };
 
 const INTERNAL_SCOPED_VARS_ALLOWLIST = new Set(['__repeat', '__repeat_index', '__repeatRow', '__repeat_row']);
@@ -1015,6 +1093,7 @@ export const __testables = {
   buildVariablePairs,
   normalizeVariableEntries,
   getPanelTitle,
+  extractVariableValues,
 };
 
 interface LogoAsset {

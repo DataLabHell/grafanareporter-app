@@ -124,6 +124,26 @@ describe('reportGenerator helpers', () => {
     });
   });
 
+  describe('mergeVariableValues', () => {
+    it('ignores manual $__all override when base values exist', () => {
+      const base = { iterator: [{ value: '1' }, { value: '2' }] };
+      const overrides = { iterator: [{ value: '$__all', text: 'All' }] };
+
+      const merged = __testables.mergeVariableValues(base, overrides);
+
+      expect(merged.iterator).toEqual(base.iterator);
+    });
+
+    it('applies manual override when concrete values are provided', () => {
+      const base = { iterator: [{ value: '1' }, { value: '2' }] };
+      const overrides = { iterator: [{ value: '9' }] };
+
+      const merged = __testables.mergeVariableValues(base, overrides);
+
+      expect(merged.iterator).toEqual(overrides.iterator);
+    });
+  });
+
   describe('normalizeVariableEntries', () => {
     it('coerces mixed structures into value/text pairs', () => {
       const values = __testables.normalizeVariableEntries(
@@ -137,6 +157,35 @@ describe('reportGenerator helpers', () => {
         { value: 'raw', text: undefined },
         { value: '42', text: undefined },
       ]);
+    });
+  });
+
+  describe('extractVariableValues', () => {
+    it('expands $__all selections into concrete option values', () => {
+      const values = __testables.extractVariableValues({
+        current: { value: ['$__all'], text: ['All'] },
+        options: [
+          { value: '$__all', text: 'All', selected: true },
+          { value: '1', text: 'One' },
+          { value: '2', text: 'Two' },
+        ],
+      } as any);
+
+      expect(values).toEqual([
+        { value: '1', text: 'One' },
+        { value: '2', text: 'Two' },
+      ]);
+    });
+
+    it('falls back to selected options when current is missing', () => {
+      const values = __testables.extractVariableValues({
+        options: [
+          { value: 'eu', text: 'EU', selected: true },
+          { value: 'us', text: 'US', selected: false },
+        ],
+      } as any);
+
+      expect(values).toEqual([{ value: 'eu', text: 'EU' }]);
     });
   });
 

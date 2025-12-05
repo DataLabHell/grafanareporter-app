@@ -24,6 +24,13 @@ export interface DashboardTemplateVariable {
     value?: unknown;
     text?: unknown;
   };
+  options?: Array<{
+    value?: unknown;
+    text?: unknown;
+    selected?: boolean;
+  }>;
+  includeAll?: boolean;
+  multi?: boolean;
 }
 
 export interface DashboardTemplating {
