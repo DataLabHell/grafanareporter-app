@@ -9,6 +9,7 @@ apps:
       layout:
         orientation: 'portrait'
         reportTheme: 'light'
+        renderConcurrency: 4
         pageMargin: 32
         header:
           padding: 8

@@ -29,7 +29,8 @@ export type LayoutNumericField =
   | 'headerPadding'
   | 'footerPadding'
   | 'footerLineHeight'
-  | 'pageNumberFontSize';
+  | 'pageNumberFontSize'
+  | 'renderConcurrency';
 
 export type LayoutDraft = Record<LayoutNumericField, string>;
 export type LayoutDraftErrors = Partial<Record<LayoutNumericField, string>>;
@@ -56,6 +57,7 @@ const CONSTRAINTS: Record<LayoutNumericField, { label: string; min: number; desc
   footerPadding: { label: 'Footer padding', min: 0 },
   footerLineHeight: { label: 'Footer text height', min: 1 },
   pageNumberFontSize: { label: 'Page number font size', min: 1 },
+  renderConcurrency: { label: 'Parallel render concurrency', min: 1, description: 'Concurrent panel render calls.' },
 };
 
 export const LAYOUT_NUMERIC_CONSTRAINTS: Readonly<typeof CONSTRAINTS> = CONSTRAINTS;
@@ -74,6 +76,7 @@ export const createLayoutDraft = (layout: ResolvedLayoutSettings): LayoutDraft =
   headerPadding: String(layout.header.padding),
   footerPadding: String(layout.footer.padding),
   footerLineHeight: String(layout.footer.lineHeight),
+  renderConcurrency: String(layout.renderConcurrency),
 });
 
 const parseNumberInput = (value: string) => {
@@ -139,13 +142,14 @@ export const mergeDraftValues = (
       width: values.logoWidth ?? base.logo.width,
       height: values.logoHeight ?? base.logo.height,
     },
-    pageNumber: {
-      ...base.pageNumber,
-      fontSize: values.pageNumberFontSize ?? base.pageNumber.fontSize,
-    },
-    pageMargin: values.pageMargin ?? base.pageMargin,
-    header: {
-      ...base.header,
+  pageNumber: {
+    ...base.pageNumber,
+    fontSize: values.pageNumberFontSize ?? base.pageNumber.fontSize,
+  },
+  renderConcurrency: values.renderConcurrency ?? base.renderConcurrency,
+  pageMargin: values.pageMargin ?? base.pageMargin,
+  header: {
+    ...base.header,
       lineHeight: values.headerLineHeight ?? base.header.lineHeight,
       padding: values.headerPadding ?? base.header.padding,
     },

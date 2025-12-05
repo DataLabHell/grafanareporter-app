@@ -162,25 +162,25 @@ export const generateDashboardReport = async ({
   const headerHeight = getBrandingReservedHeight('header', layoutConfig, logoAsset);
   const footerHeight = getBrandingReservedHeight('footer', layoutConfig, logoAsset);
 
-  const panelImages: Array<{ title: string; dataUrl: string }> = [];
+  const renderablePanels = panels
+    .map((panel, originalIndex) => ({ panel, originalIndex }))
+    .filter(({ panel }) => Boolean(panel.id || panel.renderId));
+  const panelImageSlots: Array<{ title: string; dataUrl: string } | undefined> = new Array(renderablePanels.length);
+  const totalRenderable = renderablePanels.length;
+  let nextRenderableToNotify = 0;
 
-  // Render each flattened panel via Grafana's /render/d-solo endpoint and collect the resulting data URLs.
-  for (const [index, panel] of panels.entries()) {
+  await runWithConcurrency(renderablePanels, layoutConfig.renderConcurrency ?? 1, async ({ panel }, queueIndex) => {
     throwIfAborted(signal);
-    if (!panel.id && !panel.renderId) {
-      continue;
-    }
 
     const scopedVariableOverrides = getScopedVariableOverrides(panel.scopedVars);
     const panelVariableValues = mergeVariableValues(mergedVariableValues, scopedVariableOverrides);
     const panelTitleScopedVars = mergeScopedVars(buildScopedVarsFromValueMap(panelVariableValues), panel.scopedVars);
     const resolvedPanelTitle = getPanelTitle(panel, templateSrv, panelTitleScopedVars);
-    notify(`Rendering panel ${index + 1}/${panels.length}: ${resolvedPanelTitle}`);
-    const panelVariablePairs = buildVariablePairs(panelVariableValues);
     const panelRenderId = getPanelRenderId(panel);
     if (!panelRenderId) {
-      continue;
+      return;
     }
+    const panelVariablePairs = buildVariablePairs(panelVariableValues);
 
     const params = new URLSearchParams({
       panelId: String(panelRenderId),
@@ -219,11 +219,19 @@ export const generateDashboardReport = async ({
 
     throwIfAborted(signal);
     const dataUrl = await blobToDataUrl(renderResponse.data);
-    panelImages.push({
+    panelImageSlots[queueIndex] = {
       title: resolvedPanelTitle,
       dataUrl,
-    });
-  }
+    };
+    // Emit completions in order even though renders finish in parallel.
+    while (panelImageSlots[nextRenderableToNotify]) {
+      const slot = panelImageSlots[nextRenderableToNotify]!;
+      notify(`Rendered panel ${nextRenderableToNotify + 1}/${totalRenderable}: ${slot.title}`);
+      nextRenderableToNotify += 1;
+    }
+  });
+
+  const panelImages = panelImageSlots.filter(Boolean) as Array<{ title: string; dataUrl: string }>;
 
   if (!panelImages.length) {
     throw new Error('No renderable panels were found on this dashboard.');
@@ -1085,6 +1093,30 @@ const withAbort = async <T>(promise: Promise<T>, signal?: AbortSignal): Promise<
         reject(error);
       });
   });
+};
+
+const runWithConcurrency = async <T>(
+  items: T[],
+  limit: number,
+  worker: (item: T, index: number) => Promise<void>
+) => {
+  if (!items.length) {
+    return;
+  }
+  const poolSize = Math.max(1, Math.min(limit, items.length));
+  let nextIndex = 0;
+
+  const launch = async (): Promise<void> => {
+    const current = nextIndex++;
+    if (current >= items.length) {
+      return;
+    }
+    await worker(items[current], current);
+    await launch();
+  };
+
+  const runners = Array.from({ length: poolSize }, () => launch());
+  await Promise.all(runners);
 };
 
 export const __testables = {

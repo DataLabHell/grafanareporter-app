@@ -125,6 +125,7 @@ export interface LayoutSettings {
   pageNumber?: PageNumberSettings;
   customElements?: CustomElement[];
   pageMargin?: number;
+  renderConcurrency?: number;
   header?: {
     padding?: number;
     lineHeight?: number;
@@ -151,6 +152,7 @@ export interface ReporterPluginSettings {
 export const DEFAULT_LAYOUT_SETTINGS: ResolvedLayoutSettings = {
   reportTheme: 'dark',
   orientation: 'portrait',
+  renderConcurrency: 2,
   panels: {
     perPage: 2,
     spacing: 16,
@@ -246,6 +248,11 @@ export const resolveLayoutSettings = (layout?: LayoutSettings | null): ResolvedL
           : element
       ) ?? DEFAULT_LAYOUT_SETTINGS.customElements,
     pageMargin: fallbackNumber(layout?.pageMargin, (n) => n >= 0, DEFAULT_LAYOUT_SETTINGS.pageMargin),
+    renderConcurrency: fallbackNumber(
+      layout?.renderConcurrency,
+      (n) => n > 0,
+      DEFAULT_LAYOUT_SETTINGS.renderConcurrency
+    ),
     header: {
       padding: fallbackNumber(header?.padding, (n) => n >= 0, DEFAULT_LAYOUT_SETTINGS.header.padding),
       lineHeight: fallbackNumber(header?.lineHeight, (n) => n > 0, DEFAULT_LAYOUT_SETTINGS.header.lineHeight),

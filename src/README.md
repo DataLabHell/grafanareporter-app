@@ -68,6 +68,7 @@ The overrides are defined like: **Provisioning → Global Settings → Advanced 
 | `logoAlignment`          | `left`/`center`/`right`. Logo horizontal alignment.                                       | `logoAlignment=center`               | `left`           |
 | `logoWidth`              | Max logo width in points.                                                                 | `logoWidth=120`                      | `120`            |
 | `logoHeight`             | Max logo height in points.                                                                | `logoHeight=36`                      | `36`             |
+| `renderConcurrency`      | Number of panels to render in parallel.                                                   | `renderConcurrency=4`                | `2`              |
 | `pageNumberEnabled`      | `true`/`false`. Show "Page X of Y".                                                       | `pageNumberEnabled=true`             | `true`           |
 | `pageNumberPlacement`    | `header` or `footer`. Where "Page X of Y" renders (requires `pageNumberEnabled=true`).    | `pageNumberPlacement=footer`         | `footer`         |
 | `pageNumberAlignment`    | `left`/`center`/`right`. Alignment for "Page X of Y" (requires `pageNumberEnabled=true`). | `pageNumberAlignment=right`          | `right`          |
