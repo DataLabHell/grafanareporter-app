@@ -182,4 +182,8 @@ Issues and feature requests are welcome via the project repository. Contribution
 
 ## Current issues
 
+- reportTheme select not working, only query parameter
 - Variable text instead of value in panel title
+- $__all variables only rendered as single panel
+- FontFamily might be wrong
+
