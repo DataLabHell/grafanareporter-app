@@ -71,6 +71,7 @@ export const LAYOUT_FIELD_LABELS = {
   },
   panelsTitleFontSize: { label: `${LAYOUT_NUMERIC_CONSTRAINTS.panelsTitleFontSize.label} (pt)` },
   panelsTitleFontFamily: { label: 'Panel title font family', description: 'CSS font-family for panel titles.' },
+  panelsTitleFontStyle: { label: 'Panel title font style', description: 'Font style for panel titles.' },
   panelsTitleFontColor: { label: 'Panel title font color', description: 'Text color for panel titles (e.g. #000000).' },
   pageNumbers: {
     label: 'Display page numbers',
@@ -79,12 +80,14 @@ export const LAYOUT_FIELD_LABELS = {
   pageNumberPlacement: { label: 'Page number placement', description: 'Choose header or footer for page numbers.' },
   pageNumberFontSize: { label: `${LAYOUT_NUMERIC_CONSTRAINTS.pageNumberFontSize.label} (pt)` },
   pageNumberFontFamily: { label: 'Page number font family', description: 'CSS font-family for page numbers.' },
+  pageNumberFontStyle: { label: 'Page number font style', description: 'Font style for page numbers.' },
   pageNumberFontColor: { label: 'Page number font color', description: 'Text color for page numbers (e.g. #000000).' },
   pageNumberLanguage: { label: 'Page number language', description: 'Locale used for page labels (e.g. en, de).' },
   customTextContent: { label: 'Custom text', description: 'Content to render in the PDF.' },
   customTextPlacement: { label: 'Placement', description: 'Choose header or footer for the custom text.' },
   customTextAlignment: { label: 'Alignment', description: 'Horizontal alignment for the custom text.' },
   customTextFontFamily: { label: 'Font family', description: 'CSS font-family for custom text.' },
+  customTextFontStyle: { label: 'Font style', description: 'Font style for custom text.' },
   customTextFontSize: { label: 'Font size (pt)', description: 'Text size for custom text.' },
   customTextFontColor: { label: 'Font color', description: 'Text color for custom text (e.g. #000000).' },
 };
