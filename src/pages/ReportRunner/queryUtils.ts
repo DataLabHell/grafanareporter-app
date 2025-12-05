@@ -16,7 +16,13 @@
 
 import { RawTimeRange } from '@grafana/data';
 import { DashboardTemplateVariable } from '../../types/grafana';
-import { CustomElement, LayoutAlignment, LayoutPlacement, LayoutSettings, VariableValueMap } from '../../types/reporting';
+import {
+  CustomElement,
+  LayoutAlignment,
+  LayoutPlacement,
+  LayoutSettings,
+  VariableValueMap,
+} from '../../types/reporting';
 import { LayoutNumericField } from '../../utils/layoutValidation';
 import { AdvancedSettingsSnapshot } from './types';
 
@@ -24,7 +30,6 @@ export const DEFAULT_TIME_RANGE = {
   from: 'now-6h',
   to: 'now',
 } as const;
-
 const PARAMS = {
   orientation: 'orientation',
   reportTheme: 'reportTheme',
@@ -55,6 +60,7 @@ const PARAMS = {
   headerPadding: 'headerPadding',
   footerPadding: 'footerPadding',
   footerLineHeight: 'footerLineHeight',
+  renderConcurrency: 'renderConcurrency',
 };
 
 export const normalizeRawTimeInput = (
@@ -113,7 +119,7 @@ export const formatVariablesText = (variables?: VariableValueMap) => {
 
   return Object.entries(variables)
     .map(([name, entries]) => `${name}=${entries.map((entry) => entry.text ?? entry.value).join(',')}`)
-  .join('\n');
+    .join('\n');
 };
 
 const parseCustomElements = (params: URLSearchParams): CustomElement[] => {
@@ -124,9 +130,7 @@ const parseCustomElements = (params: URLSearchParams): CustomElement[] => {
   };
 
   params.forEach((value, key) => {
-    const match = key.match(
-      /^custom(\d+)(Type|Content|Placement|Alignment|FontFamily|FontStyle|FontSize|FontColor)$/i
-    );
+    const match = key.match(/^custom(\d+)(Type|Content|Placement|Alignment|FontFamily|FontStyle|FontSize|FontColor)$/i);
     if (!match) {
       return;
     }
@@ -315,6 +319,12 @@ export const parseLayoutOverrides = (params: URLSearchParams): ParsedLayoutOverr
   const pageNumberFontColor = params.get(PARAMS.pageNumberFontColor);
   const pageNumberFontStyle = params.get(PARAMS.pageNumberFontStyle);
   const customElements = parseCustomElements(params);
+  const renderConcurrencyRaw = params.get(PARAMS.renderConcurrency);
+  const renderConcurrencyNumeric = renderConcurrencyRaw ? Number(renderConcurrencyRaw) : NaN;
+  const renderConcurrency =
+    Number.isFinite(renderConcurrencyNumeric) && renderConcurrencyNumeric > 0
+      ? Math.floor(renderConcurrencyNumeric)
+      : undefined;
 
   const numericPairs: Array<[LayoutNumericField, string | null]> = [
     ['panelsPerPage', params.get(PARAMS.panelsPerPage)],
@@ -354,7 +364,13 @@ export const parseLayoutOverrides = (params: URLSearchParams): ParsedLayoutOverr
       title: { ...(layout.panels?.title || {}), fontFamily: panelTitleFontFamily },
     };
   }
-  if (panelTitleFontStyle && (panelTitleFontStyle === 'normal' || panelTitleFontStyle === 'bold' || panelTitleFontStyle === 'italic' || panelTitleFontStyle === 'bolditalic')) {
+  if (
+    panelTitleFontStyle &&
+    (panelTitleFontStyle === 'normal' ||
+      panelTitleFontStyle === 'bold' ||
+      panelTitleFontStyle === 'italic' ||
+      panelTitleFontStyle === 'bolditalic')
+  ) {
     layout.panels = {
       ...(layout.panels || {}),
       title: { ...(layout.panels?.title || {}), fontStyle: panelTitleFontStyle },
@@ -382,7 +398,13 @@ export const parseLayoutOverrides = (params: URLSearchParams): ParsedLayoutOverr
   if (pageNumberFontColor) {
     layout.pageNumber = { ...(layout.pageNumber || {}), fontColor: pageNumberFontColor };
   }
-  if (pageNumberFontStyle && (pageNumberFontStyle === 'normal' || pageNumberFontStyle === 'bold' || pageNumberFontStyle === 'italic' || pageNumberFontStyle === 'bolditalic')) {
+  if (
+    pageNumberFontStyle &&
+    (pageNumberFontStyle === 'normal' ||
+      pageNumberFontStyle === 'bold' ||
+      pageNumberFontStyle === 'italic' ||
+      pageNumberFontStyle === 'bolditalic')
+  ) {
     layout.pageNumber = { ...(layout.pageNumber || {}), fontStyle: pageNumberFontStyle };
   }
 
@@ -400,6 +422,10 @@ export const parseLayoutOverrides = (params: URLSearchParams): ParsedLayoutOverr
   }
   if (pageAlignment === 'left' || pageAlignment === 'center' || pageAlignment === 'right') {
     layout.pageNumber = { ...(layout.pageNumber || {}), alignment: pageAlignment as LayoutAlignment };
+  }
+
+  if (renderConcurrency) {
+    layout.renderConcurrency = renderConcurrency;
   }
 
   if (customElements.length) {
@@ -436,6 +462,10 @@ export const buildReportParams = (
 
   if (settings.reportTheme) {
     params.set(PARAMS.reportTheme, settings.reportTheme);
+  }
+
+  if (settings.layout.renderConcurrency !== undefined) {
+    params.set(PARAMS.renderConcurrency, String(settings.layout.renderConcurrency));
   }
 
   if (panels.perPage !== undefined) {

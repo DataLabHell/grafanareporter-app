@@ -600,11 +600,11 @@ const ReportRunner = () => {
 
         setAdvancedSettings({
           range: coerceRawRange(defaultTime),
-          timezone: 'browser',
-          reportTheme: userThemePreference,
-          variablesText: formatVariablesText(defaultVariables),
-          layout: layoutDefaults,
-        });
+        timezone: 'browser',
+        reportTheme: userThemePreference,
+        variablesText: formatVariablesText(defaultVariables),
+        layout: layoutDefaults,
+      });
         setLayoutDraft(createLayoutDraft(layoutDefaults));
         applyLayoutErrors({});
       } catch (error) {

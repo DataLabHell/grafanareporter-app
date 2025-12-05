@@ -49,6 +49,10 @@ export const LAYOUT_FIELD_LABELS = {
   logoPlacement: { label: 'Logo placement', description: 'Choose header or footer for the logo.' },
   logoWidth: { label: `${LAYOUT_NUMERIC_CONSTRAINTS.logoWidth.label} (pt)` },
   logoHeight: { label: `${LAYOUT_NUMERIC_CONSTRAINTS.logoHeight.label} (pt)` },
+  renderConcurrency: {
+    label: LAYOUT_NUMERIC_CONSTRAINTS.renderConcurrency.label,
+    description: LAYOUT_NUMERIC_CONSTRAINTS.renderConcurrency.description,
+  },
   headerLineHeight: {
     label: `${LAYOUT_NUMERIC_CONSTRAINTS.headerLineHeight.label} (pt)`,
     description: 'Text height for header content.',
@@ -106,4 +110,8 @@ export const LAYOUT_NUMERIC_FIELD_LABELS: Record<LayoutNumericField, { label: st
   footerPadding: LAYOUT_FIELD_LABELS.footerPadding,
   footerLineHeight: LAYOUT_FIELD_LABELS.footerLineHeight,
   pageNumberFontSize: LAYOUT_FIELD_LABELS.pageNumberFontSize,
+  renderConcurrency: LAYOUT_FIELD_LABELS.renderConcurrency ?? {
+    label: 'Parallel render concurrency',
+    description: LAYOUT_NUMERIC_CONSTRAINTS.renderConcurrency.description,
+  },
 };

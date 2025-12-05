@@ -199,6 +199,13 @@ export const LayoutFormFields = ({
           <NumericInput field="panelsPerPage" values={numericValues} errors={errors} onChange={onNumericChange} />
 
           <NumericInput field="pageMargin" values={numericValues} errors={errors} onChange={onNumericChange} />
+
+          <NumericInput
+            field="renderConcurrency"
+            values={numericValues}
+            errors={errors}
+            onChange={onNumericChange}
+          />
         </FieldSet>
       </CollapsableSection>
 
