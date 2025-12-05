@@ -29,7 +29,7 @@
       "title": "Report",
       "tooltip": "Create a PDF report",
       "type": "link",
-      "url": "/a/datalabhell-grafanareporter-app/report?uid=gntv87"
+      "url": "/a/datalabhell-grafanareporter-app/report?uid=gntv88"
     }
   ],
   "panels": [
@@ -121,14 +121,10 @@
         "current": {
           "selected": true,
           "text": [
-            "1",
-            "2",
-            "3"
+            "All"
           ],
           "value": [
-            "1",
-            "2",
-            "3"
+            "$__all"
           ]
         },
         "hide": 0,
@@ -137,22 +133,22 @@
         "name": "iterator",
         "options": [
           {
-            "selected": false,
+            "selected": true,
             "text": "All",
             "value": "$__all"
           },
           {
-            "selected": true,
+            "selected": false,
             "text": "1",
             "value": "1"
           },
           {
-            "selected": true,
+            "selected": false,
             "text": "2",
             "value": "2"
           },
           {
-            "selected": true,
+            "selected": false,
             "text": "3",
             "value": "3"
           },
@@ -175,8 +171,8 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "Test Repeated Panel",
-  "uid": "gntv87",
+  "title": "Test Repeated Panel All",
+  "uid": "gntv88",
   "version": 1,
   "weekStart": ""
 }
