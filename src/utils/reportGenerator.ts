@@ -247,6 +247,7 @@ export const generateDashboardReport = async ({
   const panelsTitleEnabled = layoutConfig.panels.title.enabled;
   const panelsTitleFontSize = layoutConfig.panels.title.fontSize;
   const panelsTitleFontFamily = layoutConfig.panels.title.fontFamily;
+  const panelsTitleFontStyle = layoutConfig.panels.title.fontStyle ?? 'normal';
   const panelsTitleFontColor = layoutConfig.panels.title.fontColor;
   const titleOffset = panelsTitleEnabled ? panelsTitleFontSize : 0;
   const contentOffset = panelsTitleEnabled ? panelsTitleFontSize + 4 : 0;
@@ -282,7 +283,7 @@ export const generateDashboardReport = async ({
       const imageY = yOffset + contentOffset + (contentHeight - imageHeight) / 2;
 
       if (panelsTitleEnabled) {
-        pdf.setFont(panelsTitleFontFamily, 'normal', 'normal');
+        pdf.setFont(panelsTitleFontFamily, panelsTitleFontStyle);
         pdf.setFontSize(panelsTitleFontSize);
         const rgb = parseHexColor(panelsTitleFontColor);
         if (rgb) {
@@ -988,7 +989,7 @@ const renderBrandingArea = (
     }
     const textLineHeight = placement === 'footer' ? layoutSettings.footer.lineHeight : layoutSettings.header.lineHeight;
     const textY = centerY + textLineHeight / 3;
-    pdf.setFont(layoutSettings.pageNumber.fontFamily, 'normal', 'normal');
+    pdf.setFont(layoutSettings.pageNumber.fontFamily, layoutSettings.pageNumber.fontStyle ?? 'normal');
     pdf.setFontSize(layoutSettings.pageNumber.fontSize);
     const pageNumberColor = parseHexColor(layoutSettings.pageNumber.fontColor);
     if (pageNumberColor) {
@@ -1007,7 +1008,10 @@ const renderBrandingArea = (
     .forEach((element) => {
       const fontSize =
         element.fontSize ?? (placement === 'footer' ? layoutSettings.footer.lineHeight : layoutSettings.header.lineHeight);
-      pdf.setFont(element.fontFamily ?? layoutSettings.pageNumber.fontFamily, 'normal', 'normal');
+      pdf.setFont(
+        element.fontFamily ?? layoutSettings.pageNumber.fontFamily,
+        element.fontStyle ?? layoutSettings.pageNumber.fontStyle ?? 'normal'
+      );
       pdf.setFontSize(fontSize);
       const color = parseHexColor(element.fontColor ?? layoutSettings.pageNumber.fontColor);
       if (color) {

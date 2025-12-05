@@ -15,7 +15,7 @@
  */
 
 import React, { useMemo } from 'react';
-import { CustomTextElement, LayoutSettings } from '../types/reporting';
+import { CustomTextElement, DEFAULT_FONT_FAMILY, FontStyle, LayoutSettings } from '../types/reporting';
 import { deriveNumericValues, mergeLayoutPatch, numericFieldToPatch } from '../utils/layoutForm';
 import { LayoutDraftErrors, LayoutNumericField } from '../utils/layoutValidation';
 import LayoutFormFields from './LayoutFormFields';
@@ -96,6 +96,12 @@ export const LayoutSettingsForm = <TLayout extends LayoutSettings = LayoutSettin
     });
   };
 
+  const handlePanelTitleFontStyleChange = (value: FontStyle | undefined) => {
+    applyLayoutPatch({
+      panels: { ...(layout.panels || {}), title: { ...(layout.panels?.title || {}), fontStyle: value } },
+    });
+  };
+
   const handlePageNumberFontFamilyChange = (value: string) => {
     applyLayoutPatch({
       pageNumber: { ...(layout.pageNumber || {}), fontFamily: value },
@@ -105,6 +111,12 @@ export const LayoutSettingsForm = <TLayout extends LayoutSettings = LayoutSettin
   const handlePageNumberFontColorChange = (value: string) => {
     applyLayoutPatch({
       pageNumber: { ...(layout.pageNumber || {}), fontColor: value },
+    });
+  };
+
+  const handlePageNumberFontStyleChange = (value: FontStyle | undefined) => {
+    applyLayoutPatch({
+      pageNumber: { ...(layout.pageNumber || {}), fontStyle: value },
     });
   };
 
@@ -162,7 +174,8 @@ export const LayoutSettingsForm = <TLayout extends LayoutSettings = LayoutSettin
       content: '',
       placement: 'header',
       alignment: 'left',
-      fontFamily: layout.pageNumber?.fontFamily || 'Arial, sans-serif',
+      fontFamily: layout.pageNumber?.fontFamily || DEFAULT_FONT_FAMILY,
+      fontStyle: layout.pageNumber?.fontStyle,
       fontSize: layout.pageNumber?.fontSize || 10,
       fontColor: layout.pageNumber?.fontColor || '#000000',
     };
@@ -203,8 +216,10 @@ export const LayoutSettingsForm = <TLayout extends LayoutSettings = LayoutSettin
       onPageNumberToggle={handlePageNumberToggle}
       onPanelTitleToggle={handlePanelTitleToggle}
       onPanelTitleFontFamilyChange={handlePanelTitleFontFamilyChange}
+      onPanelTitleFontStyleChange={handlePanelTitleFontStyleChange}
       onPanelTitleFontColorChange={handlePanelTitleFontColorChange}
       onPageNumberFontFamilyChange={handlePageNumberFontFamilyChange}
+      onPageNumberFontStyleChange={handlePageNumberFontStyleChange}
       onPageNumberFontColorChange={handlePageNumberFontColorChange}
       onPageNumberLanguageChange={handlePageNumberLanguageChange}
       customElements={layout.customElements}

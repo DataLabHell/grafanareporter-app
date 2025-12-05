@@ -34,6 +34,7 @@ const PARAMS = {
   panelsTitleEnabled: 'panelsTitleEnabled',
   panelsTitleFontSize: 'panelsTitleFontSize',
   panelsTitleFontFamily: 'panelsTitleFontFamily',
+  panelsTitleFontStyle: 'panelsTitleFontStyle',
   panelsTitleFontColor: 'panelsTitleFontColor',
   panelsWidth: 'panelsWidth',
   panelsHeight: 'panelsHeight',
@@ -49,6 +50,7 @@ const PARAMS = {
   pageNumberFontFamily: 'pageNumberFontFamily',
   pageNumberFontSize: 'pageNumberFontSize',
   pageNumberFontColor: 'pageNumberFontColor',
+  pageNumberFontStyle: 'pageNumberFontStyle',
   headerLineHeight: 'headerLineHeight',
   headerPadding: 'headerPadding',
   footerPadding: 'footerPadding',
@@ -122,7 +124,9 @@ const parseCustomElements = (params: URLSearchParams): CustomElement[] => {
   };
 
   params.forEach((value, key) => {
-    const match = key.match(/^custom(\d+)(Type|Content|Placement|Alignment|FontFamily|FontSize|FontColor)$/i);
+    const match = key.match(
+      /^custom(\d+)(Type|Content|Placement|Alignment|FontFamily|FontStyle|FontSize|FontColor)$/i
+    );
     if (!match) {
       return;
     }
@@ -139,6 +143,8 @@ const parseCustomElements = (params: URLSearchParams): CustomElement[] => {
     value === 'header' || value === 'footer' ? value : undefined;
   const toAlignment = (value?: string): LayoutAlignment | undefined =>
     value === 'left' || value === 'center' || value === 'right' ? value : undefined;
+  const toFontStyle = (value?: string) =>
+    value === 'normal' || value === 'bold' || value === 'italic' || value === 'bolditalic' ? value : undefined;
   const toNumber = (value?: string): number | undefined => {
     if (value === undefined || value === null) {
       return undefined;
@@ -178,6 +184,10 @@ const parseCustomElements = (params: URLSearchParams): CustomElement[] => {
       }
       if (raw.fontcolor) {
         element.fontColor = raw.fontcolor as string;
+      }
+      const fontStyle = toFontStyle(raw.fontstyle as string | undefined);
+      if (fontStyle) {
+        element.fontStyle = fontStyle;
       }
       elements.push(element);
     });
@@ -294,6 +304,7 @@ export const parseLayoutOverrides = (params: URLSearchParams): ParsedLayoutOverr
   const pageNumbers = params.get(PARAMS.pageNumberEnabled);
   const panelTitles = params.get(PARAMS.panelsTitleEnabled);
   const panelTitleFontFamily = params.get(PARAMS.panelsTitleFontFamily);
+  const panelTitleFontStyle = params.get(PARAMS.panelsTitleFontStyle);
   const panelTitleFontColor = params.get(PARAMS.panelsTitleFontColor);
   const logoPlacement = params.get(PARAMS.logoPlacement);
   const logoAlignment = params.get(PARAMS.logoAlignment);
@@ -302,6 +313,7 @@ export const parseLayoutOverrides = (params: URLSearchParams): ParsedLayoutOverr
   const pageNumberLanguage = params.get(PARAMS.pageNumberLanguage);
   const pageNumberFontFamily = params.get(PARAMS.pageNumberFontFamily);
   const pageNumberFontColor = params.get(PARAMS.pageNumberFontColor);
+  const pageNumberFontStyle = params.get(PARAMS.pageNumberFontStyle);
   const customElements = parseCustomElements(params);
 
   const numericPairs: Array<[LayoutNumericField, string | null]> = [
@@ -342,6 +354,12 @@ export const parseLayoutOverrides = (params: URLSearchParams): ParsedLayoutOverr
       title: { ...(layout.panels?.title || {}), fontFamily: panelTitleFontFamily },
     };
   }
+  if (panelTitleFontStyle && (panelTitleFontStyle === 'normal' || panelTitleFontStyle === 'bold' || panelTitleFontStyle === 'italic' || panelTitleFontStyle === 'bolditalic')) {
+    layout.panels = {
+      ...(layout.panels || {}),
+      title: { ...(layout.panels?.title || {}), fontStyle: panelTitleFontStyle },
+    };
+  }
   if (panelTitleFontColor) {
     layout.panels = {
       ...(layout.panels || {}),
@@ -363,6 +381,9 @@ export const parseLayoutOverrides = (params: URLSearchParams): ParsedLayoutOverr
 
   if (pageNumberFontColor) {
     layout.pageNumber = { ...(layout.pageNumber || {}), fontColor: pageNumberFontColor };
+  }
+  if (pageNumberFontStyle && (pageNumberFontStyle === 'normal' || pageNumberFontStyle === 'bold' || pageNumberFontStyle === 'italic' || pageNumberFontStyle === 'bolditalic')) {
+    layout.pageNumber = { ...(layout.pageNumber || {}), fontStyle: pageNumberFontStyle };
   }
 
   if (logoEnabled === 'true' || logoEnabled === 'false') {
@@ -441,6 +462,9 @@ export const buildReportParams = (
     if (panels.title.fontFamily) {
       params.set(PARAMS.panelsTitleFontFamily, panels.title.fontFamily);
     }
+    if (panels.title.fontStyle) {
+      params.set(PARAMS.panelsTitleFontStyle, panels.title.fontStyle);
+    }
     if (panels.title.fontColor) {
       params.set(PARAMS.panelsTitleFontColor, panels.title.fontColor);
     }
@@ -483,6 +507,9 @@ export const buildReportParams = (
     if (pageNumber.fontFamily) {
       params.set(PARAMS.pageNumberFontFamily, pageNumber.fontFamily);
     }
+    if (pageNumber.fontStyle) {
+      params.set(PARAMS.pageNumberFontStyle, pageNumber.fontStyle);
+    }
     if (pageNumber.fontColor) {
       params.set(PARAMS.pageNumberFontColor, pageNumber.fontColor);
     }
@@ -508,6 +535,9 @@ export const buildReportParams = (
         }
         if (element.fontFamily) {
           params.set(`${prefix}FontFamily`, element.fontFamily);
+        }
+        if (element.fontStyle) {
+          params.set(`${prefix}FontStyle`, element.fontStyle);
         }
         if (element.fontColor) {
           params.set(`${prefix}FontColor`, element.fontColor);

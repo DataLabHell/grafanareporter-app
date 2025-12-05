@@ -46,57 +46,62 @@ The overrides are defined like: **Provisioning → Global Settings → Advanced 
 
 ## Query parameters
 
-| Parameter               | Description                                                                               | Example                              | Comments                                         |
-| ----------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------ | ------------------------------------------------ |
-| `uid`                   | Dashboard UID (required for auto-run).                                                    | `uid=abcd1234`                       |                                                  |
-| `from`, `to`            | Time range (`now-6h`, epoch ms, ISO strings).                                             | `from=now-24h&to=now`                |                                                  |
-| `tz`                    | Timezone (`browser`, `utc`, `Europe/Vienna`).                                             | `tz=browser`                         |                                                  |
-| `reportTheme`           | `dark` or `light`. Defaults to user preference.                                           | `reportTheme=light`                  |                                                  |
-| `orientation`           | `portrait` or `landscape`.                                                                | `orientation=landscape`              |                                                  |
-| `panelsPerPage`         | Positive integer controlling the grid.                                                    | `panelsPerPage=4`                    |                                                  |
-| `panelsSpacing`         | Non-negative integer (points).                                                            | `panelsSpacing=16`                   |                                                  |
-| `panelsTitleEnabled`    | `true`/`false`. Toggle panel titles (layout.panels.title.enabled).                        | `panelsTitleEnabled=true`            |                                                  |
-| `panelsTitleFontSize`   | Panel title font size in points (requires `panelsTitleEnabled=true`).                     | `panelsTitleFontSize=14`             |                                                  |
-| `panelsTitleFontFamily` | Panel title font family (requires `panelsTitleEnabled=true`).                             | `panelsTitleFontFamily=Arial`        |                                                  |
-| `panelsTitleFontColor`  | Panel title font color (requires `panelsTitleEnabled=true`).                              | `panelsTitleFontColor=#000`          |                                                  |
-| `panelsWidth`           | Panel render width in px (controls render call).                                          | `panelsWidth=1600`                   |                                                  |
-| `panelsHeight`          | Panel render height in px (controls render call).                                         | `panelsHeight=900`                   |                                                  |
-| `pageMargin`            | Page margins in points.                                                                   | `pageMargin=32`                      |                                                  |
-| `logoEnabled`           | `true`/`false`. Toggle logo.                                                              | `logoEnabled=false`                  |                                                  |
-| `logoPlacement`         | `header` or `footer`. Where the logo renders.                                             | `logoPlacement=header`               |                                                  |
-| `logoAlignment`         | `left`/`center`/`right`. Logo horizontal alignment.                                       | `logoAlignment=center`               |                                                  |
-| `logoWidth`             | Max logo width in points.                                                                 | `logoWidth=120`                      |                                                  |
-| `logoHeight`            | Max logo height in points.                                                                | `logoHeight=36`                      |                                                  |
-| `pageNumberEnabled`     | `true`/`false`. Show "Page X of Y".                                                       | `pageNumberEnabled=true`             |                                                  |
-| `pageNumberPlacement`   | `header` or `footer`. Where "Page X of Y" renders (requires `pageNumberEnabled=true`).    | `pageNumberPlacement=footer`         |                                                  |
-| `pageNumberAlignment`   | `left`/`center`/`right`. Alignment for "Page X of Y" (requires `pageNumberEnabled=true`). | `pageNumberAlignment=right`          |                                                  |
-| `pageNumberLanguage`    | `en`/`de`. Language ("Page X of Y"/"Seite X von Y") (requires `pageNumberEnabled=true`).  | `pageNumberLanguage=de`              |                                                  |
-| `pageNumberFontSize`    | Page number font size in points (requires `pageNumberEnabled=true`).                      | `pageNumberFontSize=10`              |                                                  |
-| `pageNumberFontFamily`  | Page number font family (requires `pageNumberEnabled=true`).                              | `pageNumberFontFamily=Arial`         |                                                  |
-| `pageNumberFontColor`   | Page number font color (requires `pageNumberEnabled=true`).                               | `pageNumberFontColor=%23000`         |                                                  |
-| `headerPadding`         | Header padding in points.                                                                 | `headerPadding=8`                    |                                                  |
-| `headerLineHeight`      | Header text line height in points.                                                        | `headerLineHeight=12`                |                                                  |
-| `footerPadding`         | Footer padding in points.                                                                 | `footerPadding=8`                    |                                                  |
-| `footerLineHeight`      | Footer text line height in points.                                                        | `footerLineHeight=12`                |                                                  |
-| `var-<name>`            | Repeat for every dashboard variable value.                                                | `var-region=us&var-region=eu`        |                                                  |
-| `customElements`        | Display custom elements like additional texts or images, see custom elements below.       | `custom0Type=text&custom0Content=Hi` | Experimental: repeat `custom0*`, `custom1*`, ... |
-| `logoUrl`               | URL or base64 image. Configure this globally; query parameter support is not available.   |                                      | Configure in plugin settings or provisioning.    |
+| Parameter                | Description                                                                               | Example                              | Default          |
+| ------------------------ | ----------------------------------------------------------------------------------------- | ------------------------------------ | ---------------- |
+| `uid`                    | Dashboard UID (required for auto-run).                                                    | `uid=abcd1234`                       | -                |
+| `from`, `to`             | Time range (`now-6h`, epoch ms, ISO strings).                                             | `from=now-24h&to=now`                | `now-6h` / `now` |
+| `tz`                     | Timezone (`browser`, `utc`, `Europe/Vienna`).                                             | `tz=browser`                         | `browser`        |
+| `reportTheme`            | `dark` or `light`. Defaults to user preference.                                           | `reportTheme=light`                  | `dark`           |
+| `orientation`            | `portrait` or `landscape`.                                                                | `orientation=landscape`              | `portrait`       |
+| `panelsPerPage`          | Positive integer controlling the grid.                                                    | `panelsPerPage=4`                    | `2`              |
+| `panelsSpacing`          | Non-negative integer (points).                                                            | `panelsSpacing=16`                   | `16`             |
+| `panelsTitleEnabled`     | `true`/`false`. Toggle panel titles (layout.panels.title.enabled).                        | `panelsTitleEnabled=true`            | `true`           |
+| `panelsTitleFontSize`    | Panel title font size in points (requires `panelsTitleEnabled=true`).                     | `panelsTitleFontSize=14`             | `14`             |
+| `panelsTitleFontFamily`  | Panel title font family (requires `panelsTitleEnabled=true`).                             | `panelsTitleFontFamily=helvetica`    | `helvetica`      |
+| `panelsTitleFontStyle`   | Panel title font style (`normal`, `bold`, `italic`, `bolditalic`).                        | `panelsTitleFontStyle=bold`          | `normal`         |
+| `panelsTitleFontColor`   | Panel title font color (requires `panelsTitleEnabled=true`).                              | `panelsTitleFontColor=#000`          | `#000000`        |
+| `panelsWidth`            | Panel render width in px (controls render call).                                          | `panelsWidth=1600`                   | `3200`           |
+| `panelsHeight`           | Panel render height in px (controls render call).                                         | `panelsHeight=900`                   | `1800`           |
+| `pageMargin`             | Page margins in points.                                                                   | `pageMargin=32`                      | `32`             |
+| `logoEnabled`            | `true`/`false`. Toggle logo.                                                              | `logoEnabled=false`                  | `true`           |
+| `logoPlacement`          | `header` or `footer`. Where the logo renders.                                             | `logoPlacement=header`               | `footer`         |
+| `logoAlignment`          | `left`/`center`/`right`. Logo horizontal alignment.                                       | `logoAlignment=center`               | `left`           |
+| `logoWidth`              | Max logo width in points.                                                                 | `logoWidth=120`                      | `120`            |
+| `logoHeight`             | Max logo height in points.                                                                | `logoHeight=36`                      | `36`             |
+| `pageNumberEnabled`      | `true`/`false`. Show "Page X of Y".                                                       | `pageNumberEnabled=true`             | `true`           |
+| `pageNumberPlacement`    | `header` or `footer`. Where "Page X of Y" renders (requires `pageNumberEnabled=true`).    | `pageNumberPlacement=footer`         | `footer`         |
+| `pageNumberAlignment`    | `left`/`center`/`right`. Alignment for "Page X of Y" (requires `pageNumberEnabled=true`). | `pageNumberAlignment=right`          | `right`          |
+| `pageNumberLanguage`     | `en`/`de`. Language ("Page X of Y"/"Seite X von Y") (requires `pageNumberEnabled=true`).  | `pageNumberLanguage=de`              | `en`             |
+| `pageNumberFontSize`     | Page number font size in points (requires `pageNumberEnabled=true`).                      | `pageNumberFontSize=10`              | `10`             |
+| `pageNumberFontFamily`\* | Page number font family (requires `pageNumberEnabled=true`).                              | `pageNumberFontFamily=helvetica`     | `helvetica`      |
+| `pageNumberFontStyle`    | Page number font style (`normal`, `bold`, `italic`, `bolditalic`).                        | `pageNumberFontStyle=bold`           | `normal`         |
+| `pageNumberFontColor`    | Page number font color (requires `pageNumberEnabled=true`).                               | `pageNumberFontColor=%23000`         | `#000000`        |
+| `headerPadding`          | Header padding in points.                                                                 | `headerPadding=8`                    | `6`              |
+| `headerLineHeight`       | Header text line height in points.                                                        | `headerLineHeight=12`                | `12`             |
+| `footerPadding`          | Footer padding in points.                                                                 | `footerPadding=8`                    | `6`              |
+| `footerLineHeight`       | Footer text line height in points.                                                        | `footerLineHeight=12`                | `12`             |
+| `var-<name>`             | Repeat for every dashboard variable value.                                                | `var-region=us&var-region=eu`        | -                |
+| `customElements`         | Display custom elements like additional texts or images, see custom elements below.       | `custom0Type=text&custom0Content=Hi` | empty            |
+| `logoUrl`                | URL or base64 image. Configure this globally; query parameter support is not available.   |                                      | plugin setting   |
 
 Custom elements
 
 Custom elements are indexed (`custom0*`, `custom1*`, ...). Omit unused properties for each element:
 
-| Parameter             | Description                                                       | Example                   |
-| --------------------- | ----------------------------------------------------------------- | ------------------------- |
-| `custom[i]Type`       | `text` or `image`. Type of the custom elements.                   | `custom0Type=text`        |
-| `custom[i]Content`    | Content of the custom elements.                                   | `custom0Content=abc`      |
-| `custom[i]Placement`  | `header` or `footer`. Where the custom element renders.           | `custom0Placement=footer` |
-| `custom[i]Alignment`  | `left`/`center`/`right`. Custom element horizontal alignment.     | `custom0Alignment=center` |
-| `custom[i]FontSize`   | Custom element font size in points (requires `custom0Type=text`). | `custom0FontSize=14`      |
-| `custom[i]FontFamily` | Custom element font family (requires `custom0Type=text`).         | `custom0FontFamily=Arial` |
-| `custom[i]FontColor`  | Custom element font color (requires `custom0Type=text`).          | `custom0FontColor=#000`   |
-| `custom[i]Width`      | Custom element width in px (requires `custom0Type=image`).        | `custom0Width=120`        |
-| `custom[i]Height`     | Custom element height in px (requires `custom0Type=image`).       | `custom0Height=36`        |
+| Parameter               | Description                                                           | Example                       | Comments                        |
+| ----------------------- | --------------------------------------------------------------------- | ----------------------------- | ------------------------------- |
+| `custom[i]Type`         | `text` or `image`. Type of the custom elements.                       | `custom0Type=text`            | Currently only `text available` |
+| `custom[i]Content`      | Content of the custom elements.                                       | `custom0Content=abc`          |                                 |
+| `custom[i]Placement`    | `header` or `footer`. Where the custom element renders.               | `custom0Placement=footer`     |                                 |
+| `custom[i]Alignment`    | `left`/`center`/`right`. Custom element horizontal alignment.         | `custom0Alignment=center`     |                                 |
+| `custom[i]FontSize`     | Custom element font size in points (requires `custom0Type=text`).     | `custom0FontSize=14`          |                                 |
+| `custom[i]FontFamily`\* | Custom element font family (requires `custom0Type=text`).             | `custom0FontFamily=helvetica` |                                 |
+| `custom[i]FontStyle`    | Custom element font style (`normal`, `bold`, `italic`, `bolditalic`). | `custom0FontStyle=italic`     |                                 |
+| `custom[i]FontColor`    | Custom element font color (requires `custom0Type=text`).              | `custom0FontColor=#000`       |                                 |
+| `custom[i]Width`        | Custom element width in px (requires `custom0Type=image`).            | `custom0Width=120`            |                                 |
+| `custom[i]Height`       | Custom element height in px (requires `custom0Type=image`).           | `custom0Height=36`            |                                 |
+
+\* Available fonts for PDF output: built-in PDF fonts `helvetica`, `times`, and `courier`.
 
 ## Configuration
 
@@ -139,7 +144,8 @@ apps:
           height: 1800
           title:
             enabled: true
-            fontFamily: 'Arial, sans-serif'
+            fontFamily: 'helvetica'
+            fontStyle: 'bold'
             fontSize: 22
             fontColor: '#000000'
         logo:
@@ -154,12 +160,14 @@ apps:
           placement: 'footer'
           alignment: 'right'
           language: 'en'
+          fontStyle: 'normal'
         customElements:
           - type: 'text'
             content: 'Generated by DataLabHell Grafana Reporter'
             placement: 'footer'
             alignment: 'center'
-            fontFamily: 'Arial, sans-serif'
+            fontFamily: 'helvetica'
+            fontStyle: 'italic'
             fontSize: 10
             fontColor: '#000000'
 ```
@@ -178,12 +186,9 @@ Issues and feature requests are welcome via the project repository. Contribution
 - custom text fields e.g. "internal use only" info in footer/header
 - translation option for "page x of Y"
 - central logo file upload and switch via url parameter so it is not getting too long
-- use grafana buildin dropdowns, file upload... instead of custom components
 
 ## Current issues
 
 - reportTheme select not working, only query parameter
 - Variable text instead of value in panel title
-- $__all variables only rendered as single panel
-- FontFamily might be wrong
-
+- $\_\_all variables only rendered as single panel

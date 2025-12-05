@@ -21,6 +21,7 @@ export type ReportOrientation = 'portrait' | 'landscape';
 
 export type LayoutPlacement = 'header' | 'footer';
 export type LayoutAlignment = 'left' | 'center' | 'right';
+export type FontStyle = 'normal' | 'bold' | 'italic' | 'bolditalic';
 
 export type BrandingItemType = 'logo' | 'pageNumber' | 'text';
 
@@ -46,6 +47,20 @@ export const alignmentOptions = [
   { label: 'Right', value: 'right' as LayoutAlignment },
 ];
 
+export const fontFamilyOptions = [
+  { label: 'Helvetica', value: 'helvetica' },
+  { label: 'Times', value: 'times' },
+  { label: 'Courier', value: 'courier' },
+];
+
+export const DEFAULT_FONT_FAMILY = 'helvetica';
+export const fontStyleOptions: Array<{ label: string; value: FontStyle }> = [
+  { label: 'Normal', value: 'normal' },
+  { label: 'Bold', value: 'bold' },
+  { label: 'Italic', value: 'italic' },
+  { label: 'Bold Italic', value: 'bolditalic' },
+];
+
 export interface VariableValue {
   value: string;
   text?: string;
@@ -58,6 +73,7 @@ export interface PanelTitleSettings {
   fontFamily?: string;
   fontSize?: number;
   fontColor?: string;
+  fontStyle?: FontStyle;
 }
 
 export interface PanelsLayoutSettings {
@@ -85,6 +101,7 @@ export interface PageNumberSettings {
   fontFamily?: string;
   fontSize?: number;
   fontColor?: string;
+  fontStyle?: FontStyle;
 }
 
 export interface CustomTextElement {
@@ -95,6 +112,7 @@ export interface CustomTextElement {
   fontFamily?: string;
   fontSize?: number;
   fontColor?: string;
+  fontStyle?: FontStyle;
 }
 
 export type CustomElement = CustomTextElement;
@@ -138,7 +156,8 @@ export const DEFAULT_LAYOUT_SETTINGS: ResolvedLayoutSettings = {
     spacing: 16,
     title: {
       enabled: true,
-      fontFamily: 'Arial',
+      fontFamily: DEFAULT_FONT_FAMILY,
+      fontStyle: 'normal',
       fontSize: 14,
       fontColor: '#000000',
     },
@@ -158,7 +177,8 @@ export const DEFAULT_LAYOUT_SETTINGS: ResolvedLayoutSettings = {
     placement: 'footer',
     alignment: 'right',
     language: 'en',
-    fontFamily: 'Arial',
+    fontFamily: DEFAULT_FONT_FAMILY,
+    fontStyle: 'normal',
     fontSize: 10,
     fontColor: '#000000',
   },
@@ -194,6 +214,7 @@ export const resolveLayoutSettings = (layout?: LayoutSettings | null): ResolvedL
       title: {
         enabled: panels?.title?.enabled ?? DEFAULT_LAYOUT_SETTINGS.panels.title.enabled,
         fontFamily: panels?.title?.fontFamily ?? DEFAULT_LAYOUT_SETTINGS.panels.title.fontFamily,
+        fontStyle: panels?.title?.fontStyle ?? DEFAULT_LAYOUT_SETTINGS.panels.title.fontStyle,
         fontSize: fallbackNumber(panels?.title?.fontSize, (n) => n > 0, DEFAULT_LAYOUT_SETTINGS.panels.title.fontSize),
         fontColor: panels?.title?.fontColor ?? DEFAULT_LAYOUT_SETTINGS.panels.title.fontColor,
       },
@@ -214,10 +235,16 @@ export const resolveLayoutSettings = (layout?: LayoutSettings | null): ResolvedL
       alignment: pageNumber?.alignment ?? DEFAULT_LAYOUT_SETTINGS.pageNumber.alignment,
       language: pageNumber?.language ?? DEFAULT_LAYOUT_SETTINGS.pageNumber.language,
       fontFamily: pageNumber?.fontFamily ?? DEFAULT_LAYOUT_SETTINGS.pageNumber.fontFamily,
+      fontStyle: pageNumber?.fontStyle ?? DEFAULT_LAYOUT_SETTINGS.pageNumber.fontStyle,
       fontSize: fallbackNumber(pageNumber?.fontSize, (n) => n > 0, DEFAULT_LAYOUT_SETTINGS.pageNumber.fontSize),
       fontColor: pageNumber?.fontColor ?? DEFAULT_LAYOUT_SETTINGS.pageNumber.fontColor,
     },
-    customElements: layout?.customElements ?? DEFAULT_LAYOUT_SETTINGS.customElements,
+    customElements:
+      layout?.customElements?.map((element) =>
+        element.type === 'text'
+          ? { ...element, fontStyle: element.fontStyle ?? DEFAULT_LAYOUT_SETTINGS.pageNumber.fontStyle }
+          : element
+      ) ?? DEFAULT_LAYOUT_SETTINGS.customElements,
     pageMargin: fallbackNumber(layout?.pageMargin, (n) => n >= 0, DEFAULT_LAYOUT_SETTINGS.pageMargin),
     header: {
       padding: fallbackNumber(header?.padding, (n) => n >= 0, DEFAULT_LAYOUT_SETTINGS.header.padding),

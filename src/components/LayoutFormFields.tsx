@@ -22,16 +22,21 @@ import {
   FieldSet,
   Input,
   RadioButtonGroup,
+  Select,
   Switch,
   useStyles2,
 } from '@grafana/ui';
 import React, { useRef } from 'react';
 import { getAppConfigStyles } from 'styles/appConfigStyles';
 import {
+  DEFAULT_FONT_FAMILY,
+  fontStyleOptions,
+  FontStyle,
   LayoutAlignment,
   LayoutPlacement,
   LayoutSettings,
   alignmentOptions,
+  fontFamilyOptions,
   orientationOptions,
   placementOptions,
   themeOptions,
@@ -52,8 +57,10 @@ interface Props {
   onPageNumberToggle: (checked: boolean) => void;
   onPanelTitleToggle: (checked: boolean) => void;
   onPanelTitleFontFamilyChange?: (value: string) => void;
+  onPanelTitleFontStyleChange?: (value: FontStyle | undefined) => void;
   onPanelTitleFontColorChange?: (value: string) => void;
   onPageNumberFontFamilyChange?: (value: string) => void;
+  onPageNumberFontStyleChange?: (value: FontStyle | undefined) => void;
   onPageNumberFontColorChange?: (value: string) => void;
   onPageNumberLanguageChange?: (value: string) => void;
   onLogoPlacementChange: (value: LayoutPlacement) => void;
@@ -114,6 +121,20 @@ const NumericInput = ({
   );
 };
 
+const toFontOption = (value?: string) => {
+  if (!value) {
+    return undefined;
+  }
+  return fontFamilyOptions.find((option) => option.value === value) ?? { label: value, value };
+};
+
+const toFontStyleOption = (value?: string) => {
+  if (!value) {
+    return undefined;
+  }
+  return fontStyleOptions.find((option) => option.value === value) ?? { label: value, value: value as any };
+};
+
 export const LayoutFormFields = ({
   layout,
   numericValues,
@@ -125,8 +146,10 @@ export const LayoutFormFields = ({
   onPageNumberToggle,
   onPanelTitleToggle,
   onPanelTitleFontFamilyChange,
+  onPanelTitleFontStyleChange,
   onPanelTitleFontColorChange,
   onPageNumberFontFamilyChange,
+  onPageNumberFontStyleChange,
   onPageNumberFontColorChange,
   onPageNumberLanguageChange,
   onLogoPlacementChange,
@@ -223,12 +246,24 @@ export const LayoutFormFields = ({
                 label={LAYOUT_FIELD_LABELS.panelsTitleFontFamily.label}
                 description={LAYOUT_FIELD_LABELS.panelsTitleFontFamily.description}
               >
-                <Input
-                  placeholder="e.g. Arial, sans-serif"
-                  value={layout.panels?.title?.fontFamily ?? ''}
-                  onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-                    onPanelTitleFontFamilyChange?.(event.currentTarget.value)
-                  }
+                <Select
+                  options={fontFamilyOptions}
+                  placeholder={`Default (${DEFAULT_FONT_FAMILY})`}
+                  value={toFontOption(layout.panels?.title?.fontFamily)}
+                  onChange={(option) => onPanelTitleFontFamilyChange?.((option?.value as string) ?? '')}
+                  allowClear
+                />
+              </Field>
+              <Field
+                label={LAYOUT_FIELD_LABELS.panelsTitleFontStyle.label}
+                description={LAYOUT_FIELD_LABELS.panelsTitleFontStyle.description}
+              >
+                <Select
+                  options={fontStyleOptions}
+                  placeholder="Default (normal)"
+                  value={toFontStyleOption(layout.panels?.title?.fontStyle)}
+                  onChange={(option) => onPanelTitleFontStyleChange?.(option?.value as FontStyle | undefined)}
+                  allowClear
                 />
               </Field>
               <Field
@@ -361,12 +396,24 @@ export const LayoutFormFields = ({
                 label={LAYOUT_FIELD_LABELS.pageNumberFontFamily.label}
                 description={LAYOUT_FIELD_LABELS.pageNumberFontFamily.description}
               >
-                <Input
-                  placeholder="e.g. Arial, sans-serif"
-                  value={layout.pageNumber?.fontFamily ?? ''}
-                  onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-                    onPageNumberFontFamilyChange?.(event.currentTarget.value)
-                  }
+                <Select
+                  options={fontFamilyOptions}
+                  placeholder={`Default (${DEFAULT_FONT_FAMILY})`}
+                  value={toFontOption(layout.pageNumber?.fontFamily)}
+                  onChange={(option) => onPageNumberFontFamilyChange?.((option?.value as string) ?? '')}
+                  allowClear
+                />
+              </Field>
+              <Field
+                label={LAYOUT_FIELD_LABELS.pageNumberFontStyle.label}
+                description={LAYOUT_FIELD_LABELS.pageNumberFontStyle.description}
+              >
+                <Select
+                  options={fontStyleOptions}
+                  placeholder="Default (normal)"
+                  value={toFontStyleOption(layout.pageNumber?.fontStyle)}
+                  onChange={(option) => onPageNumberFontStyleChange?.(option?.value as FontStyle | undefined)}
+                  allowClear
                 />
               </Field>
               <Field
@@ -438,12 +485,26 @@ export const LayoutFormFields = ({
                 label={LAYOUT_FIELD_LABELS.customTextFontFamily.label}
                 description={LAYOUT_FIELD_LABELS.customTextFontFamily.description}
               >
-                <Input
-                  placeholder="e.g. Arial, sans-serif"
-                  value={element.fontFamily ?? ''}
-                  onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-                    onUpdateCustomElement?.(index, { fontFamily: event.currentTarget.value })
+                <Select
+                  options={fontFamilyOptions}
+                  placeholder={`Default (${DEFAULT_FONT_FAMILY})`}
+                  value={toFontOption(element.fontFamily)}
+                  onChange={(option) => onUpdateCustomElement?.(index, { fontFamily: (option?.value as string) ?? '' })}
+                  allowClear
+                />
+              </Field>
+              <Field
+                label={LAYOUT_FIELD_LABELS.customTextFontStyle.label}
+                description={LAYOUT_FIELD_LABELS.customTextFontStyle.description}
+              >
+                <Select
+                  options={fontStyleOptions}
+                  placeholder="Default (normal)"
+                  value={toFontStyleOption(element.fontStyle)}
+                  onChange={(option) =>
+                    onUpdateCustomElement?.(index, { fontStyle: option?.value as FontStyle | undefined })
                   }
+                  allowClear
                 />
               </Field>
               <Field
