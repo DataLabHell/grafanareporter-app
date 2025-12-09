@@ -129,11 +129,12 @@ export const generateDashboardReport = async ({
 
   const response = await backendSrv.get<DashboardApiResponse>(`/api/dashboards/uid/${dashboardUid}`);
   // Variables can come from three places: Grafana template variables, dashboard defaults, and manual overrides/query params.
-  const templateVariableValues = getTemplateVariableValues();
   const dashboardVariableValues = getDashboardTemplateVariableValues(response.dashboard);
-  const mergedVariableValues = mergeVariableValues(
-    mergeVariableValues(templateVariableValues, dashboardVariableValues),
-    manualVariables
+  const definitionLookup = buildVariableDefinitionLookup(response.dashboard);
+  const mergedVariableValues = mapVariableTextFromDashboard(
+    mergeVariableValues(dashboardVariableValues, manualVariables),
+    dashboardVariableValues,
+    definitionLookup
   );
   const dashboardTitle = response.dashboard?.title || fallbackTitle || `dashboard-${dashboardUid}`;
   const slug = response.meta?.slug || slugify(dashboardTitle);
@@ -535,10 +536,6 @@ const formatTimestamp = (date: Date) => {
   )}${pad(date.getSeconds())}`;
 };
 
-const hasVariableCurrentValue = (
-  variable: TypedVariableModel
-): variable is TypedVariableModel & { current: { value?: unknown; text?: unknown } } => 'current' in variable;
-
 const resolveThemePreference = (preference: ReportTheme): Exclude<ReportTheme, 'user'> => {
   if (preference === 'user') {
     const userTheme = config.bootData?.user?.theme;
@@ -611,25 +608,6 @@ const getDashboardTemplateVariableValues = (dashboard?: DashboardModel): Variabl
   }
 
   return values;
-};
-
-const getTemplateVariableValues = (): VariableValueMap => {
-  const templateSrv = getTemplateSrv();
-  const result: VariableValueMap = {};
-
-  templateSrv.getVariables().forEach((variable) => {
-    if (!hasVariableCurrentValue(variable)) {
-      return;
-    }
-
-    const normalized = extractVariableValues(variable);
-
-    if (normalized.length) {
-      result[variable.name] = normalized;
-    }
-  });
-
-  return result;
 };
 
 const mergeVariableValues = (base: VariableValueMap, overrides?: VariableValueMap): VariableValueMap => {
@@ -765,10 +743,13 @@ const extractVariableValues = (
   const options = normalizeVariableOptions((variable as any)?.options);
   const allSelected = current.some(isAllValue);
 
+  const toValuePairs = (entries: NormalizedVariableOption[]): VariableValue[] =>
+    entries.map(({ value, text }) => ({ value, text }));
+
   if (allSelected && options.length) {
     const withoutAll = options.filter((option) => !isAllValue(option));
     if (withoutAll.length) {
-      return withoutAll;
+      return toValuePairs(withoutAll);
     }
   }
 
@@ -778,10 +759,10 @@ const extractVariableValues = (
 
   const selectedOptions = options.filter((option) => option.selected);
   if (selectedOptions.length) {
-    return selectedOptions;
+    return toValuePairs(selectedOptions);
   }
 
-  return options;
+  return toValuePairs(options);
 };
 
 interface NormalizedVariableOption extends VariableValue {
@@ -814,6 +795,72 @@ const isAllValue = (entry: VariableValue) => {
   const value = entry.value?.toString().toLowerCase();
   const text = entry.text?.toString().toLowerCase();
   return value === '$__all' || value === '__all' || text === 'all';
+};
+
+const mapVariableTextFromDashboard = (
+  values: VariableValueMap,
+  dashboardValues?: VariableValueMap,
+  definitionLookup?: Record<string, Map<string, string>>
+): VariableValueMap => {
+  const result: VariableValueMap = {};
+  for (const [name, entries] of Object.entries(values)) {
+    if (!entries?.length) {
+      result[name] = entries;
+      continue;
+    }
+    const dashboardEntries = dashboardValues?.[name] ?? [];
+    const definitionMap = definitionLookup?.[name];
+    result[name] = entries.map((entry) => {
+      if (entry.text && entry.text !== entry.value) {
+        return entry;
+      }
+      const dashboardMatch = dashboardEntries.find(
+        (dash) => dash.value === entry.value && dash.text && dash.text !== dash.value
+      );
+      const definitionText = definitionMap?.get(entry.value);
+      if (dashboardMatch?.text) {
+        return { ...entry, text: dashboardMatch.text };
+      }
+      if (definitionText) {
+        return { ...entry, text: definitionText };
+      }
+      return { ...entry, text: entry.text ?? entry.value };
+    });
+  }
+  return result;
+};
+
+// Grafana omits resolved option lists for query variables in the dashboard JSON, so we parse the raw
+// SQL-like definition to recover value->text pairs for non-current selections.
+const buildVariableDefinitionLookup = (dashboard?: DashboardModel) => {
+  const lookup: Record<string, Map<string, string>> = {};
+  const list = dashboard?.templating?.list;
+  if (!list?.length) {
+    return lookup;
+  }
+  for (const variable of list) {
+    if (!variable?.name || !variable?.definition || typeof variable.definition !== 'string') {
+      continue;
+    }
+    const map = parseDefinitionPairs(variable.definition);
+    if (map.size) {
+      lookup[variable.name] = map;
+    }
+  }
+  return lookup;
+};
+
+const parseDefinitionPairs = (definition: string): Map<string, string> => {
+  const map = new Map<string, string>();
+  const regex = /\(\s*'([^']+)'\s*,\s*'([^']+)'\s*\)/g;
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(definition)) !== null) {
+    const [, text, value] = match;
+    if (value) {
+      map.set(value, text);
+    }
+  }
+  return map;
 };
 
 const INTERNAL_SCOPED_VARS_ALLOWLIST = new Set(['__repeat', '__repeat_index', '__repeatRow', '__repeat_row']);
