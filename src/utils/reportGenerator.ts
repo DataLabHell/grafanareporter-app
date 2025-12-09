@@ -610,6 +610,7 @@ const getDashboardTemplateVariableValues = (dashboard?: DashboardModel): Variabl
   return values;
 };
 
+// Merges dashboard variables with manual overrides, keeping display text when possible.
 const mergeVariableValues = (base: VariableValueMap, overrides?: VariableValueMap): VariableValueMap => {
   if (!overrides || !Object.keys(overrides).length) {
     return base;
@@ -641,6 +642,7 @@ const mergeVariableValues = (base: VariableValueMap, overrides?: VariableValueMa
   return result;
 };
 
+// Flattens variable map into repeated var- key/value pairs for render requests.
 const buildVariablePairs = (values: VariableValueMap): Array<{ key: string; value: string }> =>
   Object.entries(values)
     .map(([name, variableValues]) =>
@@ -651,6 +653,7 @@ const buildVariablePairs = (values: VariableValueMap): Array<{ key: string; valu
     )
     .flat();
 
+// Converts a VariableValueMap into Grafana ScopedVars shape for template replacement.
 const buildScopedVarsFromValueMap = (values?: VariableValueMap): ScopedVars | undefined => {
   if (!values || !Object.keys(values).length) {
     return undefined;
@@ -682,6 +685,7 @@ const toArray = (input: any) => {
   return Array.isArray(input) ? input : [input];
 };
 
+// Normalizes mixed Grafana variable shapes into consistent value/text pairs.
 const normalizeVariableEntries = (value: any, text?: any): VariableValue[] => {
   const values = toArray(value);
   const texts = toArray(text);
@@ -736,6 +740,7 @@ const normalizeVariableEntries = (value: any, text?: any): VariableValue[] => {
   return normalized;
 };
 
+// Extracts current/option values from a dashboard/template variable.
 const extractVariableValues = (
   variable: Partial<DashboardTemplateVariable> | Partial<TypedVariableModel>
 ): VariableValue[] => {
@@ -769,6 +774,7 @@ interface NormalizedVariableOption extends VariableValue {
   selected: boolean;
 }
 
+// Normalizes option entries into value/text pairs.
 const normalizeVariableOptions = (options?: Array<{ value?: any; text?: any; selected?: boolean }>) => {
   if (!options?.length) {
     return [] as NormalizedVariableOption[];
@@ -797,6 +803,7 @@ const isAllValue = (entry: VariableValue) => {
   return value === '$__all' || value === '__all' || text === 'all';
 };
 
+// Applies friendly text labels to merged values, using dashboard values and parsed definitions as fallback.
 const mapVariableTextFromDashboard = (
   values: VariableValueMap,
   dashboardValues?: VariableValueMap,
@@ -832,6 +839,7 @@ const mapVariableTextFromDashboard = (
 
 // Grafana omits resolved option lists for query variables in the dashboard JSON, so we parse the raw
 // SQL-like definition to recover value->text pairs for non-current selections.
+// Parses variable definitions to build a value->text lookup for query variables.
 const buildVariableDefinitionLookup = (dashboard?: DashboardModel) => {
   const lookup: Record<string, Map<string, string>> = {};
   const list = dashboard?.templating?.list;
@@ -850,6 +858,7 @@ const buildVariableDefinitionLookup = (dashboard?: DashboardModel) => {
   return lookup;
 };
 
+// Extracts (text, value) tuples from a SQL-like VALUES definition string.
 const parseDefinitionPairs = (definition: string): Map<string, string> => {
   const map = new Map<string, string>();
   const regex = /\(\s*'([^']+)'\s*,\s*'([^']+)'\s*\)/g;
