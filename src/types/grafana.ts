@@ -31,6 +31,13 @@ export interface DashboardTemplateVariable {
   }>;
   includeAll?: boolean;
   multi?: boolean;
+  definition?: string;
+  query?: unknown;
+  type?: string;
+  datasource?: {
+    type?: string;
+    uid?: string;
+  };
 }
 
 export interface DashboardTemplating {
