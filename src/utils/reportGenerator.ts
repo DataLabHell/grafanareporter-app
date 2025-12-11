@@ -17,7 +17,7 @@
 import { dateMath, PluginExtensionPanelContext, RawTimeRange, ScopedVars, TypedVariableModel } from '@grafana/data';
 import { TimeZone } from '@grafana/schema';
 
-import { config, getBackendSrv, getTemplateSrv, locationService } from '@grafana/runtime';
+import { config, getBackendSrv, getDataSourceSrv, getTemplateSrv, locationService } from '@grafana/runtime';
 import { jsPDF, TextOptionsLight } from 'jspdf';
 import { lastValueFrom } from 'rxjs';
 import { DashboardApiResponse, DashboardModel, DashboardTemplateVariable, PanelModel } from '../types/grafana';
@@ -128,12 +128,25 @@ export const generateDashboardReport = async ({
   throwIfAborted(signal);
 
   const response = await backendSrv.get<DashboardApiResponse>(`/api/dashboards/uid/${dashboardUid}`);
+  const rawRange = contextTimeRange ?? response.dashboard?.time ?? DEFAULT_RAW_TIME_RANGE;
+  const timeRange = resolveTimeRange(rawRange, timeZone);
+
   // Variables can come from three places: Grafana template variables, dashboard defaults, and manual overrides/query params.
   const dashboardVariableValues = getDashboardTemplateVariableValues(response.dashboard);
+  const runtimeVariableValues = getRuntimeTemplateVariableValues(templateSrv);
+  const withRuntimeVariables = mergeVariableValues(dashboardVariableValues, runtimeVariableValues);
+  const queryVariableValues = await resolveQueryVariableValues(
+    response.dashboard,
+    withRuntimeVariables,
+    rawRange,
+    timeZone,
+    templateSrv
+  );
+  const baseVariableValues = mergeVariableValues(withRuntimeVariables, queryVariableValues);
   const definitionLookup = buildVariableDefinitionLookup(response.dashboard);
   const mergedVariableValues = mapVariableTextFromDashboard(
-    mergeVariableValues(dashboardVariableValues, manualVariables),
-    dashboardVariableValues,
+    mergeVariableValues(baseVariableValues, manualVariables),
+    baseVariableValues,
     definitionLookup
   );
   const dashboardTitle = response.dashboard?.title || fallbackTitle || `dashboard-${dashboardUid}`;
@@ -146,8 +159,6 @@ export const generateDashboardReport = async ({
   }
 
   notify(`Found ${panels.length} panels, rendering screenshots...`);
-  const rawRange = contextTimeRange ?? response.dashboard?.time ?? DEFAULT_RAW_TIME_RANGE;
-  const timeRange = resolveTimeRange(rawRange, timeZone);
 
   if (!timeRange) {
     throw new Error('Could not determine the current time range.');
@@ -358,7 +369,7 @@ const flattenPanels = (
     const combinedScopedVars = mergeScopedVars(inheritedScopedVars, panel.scopedVars);
 
     if (panel.type === 'row') {
-      if (panel.repeat && !hasScopedOverride(combinedScopedVars, panel.repeat)) {
+      if (panel.repeat && !hasScopedOverride(combinedScopedVars, panel.repeat, variableValues[panel.repeat])) {
         const repeatValues = variableValues[panel.repeat];
         if (repeatValues?.length) {
           repeatValues.forEach((entry, index) => {
@@ -376,7 +387,7 @@ const flattenPanels = (
       continue;
     }
 
-    if (panel.repeat && !hasScopedOverride(combinedScopedVars, panel.repeat)) {
+    if (panel.repeat && !hasScopedOverride(combinedScopedVars, panel.repeat, variableValues[panel.repeat])) {
       const repeatValues = variableValues[panel.repeat];
       if (repeatValues?.length) {
         repeatValues.forEach((entry, index) => {
@@ -448,7 +459,9 @@ const groupPanelsByRows = (panels: PanelModel[] = []): PanelModel[] => {
     }
 
     if (panel.type === 'row') {
-      activeRow = panel.collapsed === false ? panel : undefined;
+      // Treat missing `collapsed` as expanded; only skip children when it is explicitly true (critical for $__all repeats).
+      const isExpanded = panel.collapsed !== true;
+      activeRow = isExpanded ? panel : undefined;
       if (activeRow && !activeRow.panels) {
         activeRow.panels = [];
       }
@@ -610,6 +623,83 @@ const getDashboardTemplateVariableValues = (dashboard?: DashboardModel): Variabl
   return values;
 };
 
+// Reads variable values/options from the live Grafana template service (includes query variable options).
+const getRuntimeTemplateVariableValues = (templateSrvInstance?: { getVariables?: () => TypedVariableModel[] }) => {
+  const variables = templateSrvInstance?.getVariables?.();
+  if (!variables?.length) {
+    return {};
+  }
+
+  const values: VariableValueMap = {};
+
+  for (const variable of variables) {
+    if (!variable?.name) {
+      continue;
+    }
+
+    const normalized = extractVariableValues(variable);
+    if (normalized.length) {
+      values[variable.name] = normalized;
+    }
+  }
+
+  return values;
+};
+
+// Resolves options for query variables by executing their queries against their datasource.
+const resolveQueryVariableValues = async (
+  dashboard: DashboardModel | undefined,
+  existingValues: VariableValueMap,
+  rawRange: RawTimeRange,
+  timeZone?: TimeZone,
+  templateSrvInstance?: { replace?: (target?: string, scopedVars?: ScopedVars, format?: string | Function) => string }
+) => {
+  const list = dashboard?.templating?.list;
+  if (!list?.length) {
+    return {};
+  }
+
+  const resolved: VariableValueMap = {};
+  const timeRange = resolveTimeRange(rawRange, timeZone);
+
+  for (const variable of list) {
+    if (!variable?.name || variable?.type !== 'query') {
+      continue;
+    }
+
+    const query = extractQueryVariableQuery(variable);
+    if (!query) {
+      continue;
+    }
+
+    try {
+      const datasourceRef = (variable as any).datasource;
+      const scopedVars = buildScopedVarsFromValueMap(existingValues);
+      const interpolatedQuery = templateSrvInstance?.replace?.(query, scopedVars) ?? query;
+
+      const options = await runQueryVariableFallback(
+        variable,
+        interpolatedQuery,
+        datasourceRef,
+        rawRange,
+        timeRange,
+        templateSrvInstance,
+        scopedVars
+      );
+
+      const normalized = normalizeVariableOptions(mapMetricFindResults(options, (variable as any)?.regex));
+
+      if (normalized.length) {
+        resolved[variable.name] = normalized.map(({ value, text }) => ({ value, text }));
+      }
+    } catch (error) {
+      console.warn('Failed to resolve query variable options', variable?.name, error);
+    }
+  }
+
+  return resolved;
+};
+
 // Merges dashboard variables with manual overrides, keeping display text when possible.
 const mergeVariableValues = (base: VariableValueMap, overrides?: VariableValueMap): VariableValueMap => {
   if (!overrides || !Object.keys(overrides).length) {
@@ -683,6 +773,261 @@ const toArray = (input: any) => {
     return [];
   }
   return Array.isArray(input) ? input : [input];
+};
+
+// Extracts the raw query string from a query variable definition.
+const extractQueryVariableQuery = (variable: Partial<DashboardTemplateVariable>) => {
+  const query = (variable as any)?.query;
+  if (!query) {
+    return undefined;
+  }
+
+  if (typeof query === 'string') {
+    return query;
+  }
+
+  if (typeof query === 'object' && 'query' in query) {
+    return (query as any).query;
+  }
+
+  return undefined;
+};
+
+const mapMetricFindResults = (options: any, rawRegex?: any) => {
+  const results = toArray(options);
+  if (!results.length) {
+    return [];
+  }
+  const regex = coerceRegex(rawRegex);
+  const mapped: Array<{ value?: any; text?: any; selected?: boolean }> = [];
+
+  for (const entry of results) {
+    const value = (entry as any)?.value ?? (entry as any)?.text ?? entry;
+    const text = (entry as any)?.text ?? (entry as any)?.value ?? entry;
+
+    if (value === undefined || value === null || value === '') {
+      continue;
+    }
+
+    const coercedValue = String(value);
+    const coercedText = text === undefined || text === null || text === '' ? undefined : String(text);
+
+    if (!regex) {
+      mapped.push({ value: coercedValue, text: coercedText, selected: false });
+      continue;
+    }
+
+    const candidate = applyRegexToValue(regex, coercedValue, coercedText);
+    if (candidate) {
+      mapped.push({ ...candidate, selected: false });
+    }
+  }
+
+  return mapped;
+};
+
+const coerceRegex = (rawRegex: any) => {
+  if (!rawRegex || typeof rawRegex !== 'string') {
+    return undefined;
+  }
+
+  try {
+    if (rawRegex.startsWith('/')) {
+      const lastSlash = rawRegex.lastIndexOf('/');
+      if (lastSlash > 1) {
+        const pattern = rawRegex.slice(1, lastSlash);
+        const flags = rawRegex.slice(lastSlash + 1);
+        return new RegExp(pattern, flags);
+      }
+    }
+
+    return new RegExp(rawRegex);
+  } catch {
+    return undefined;
+  }
+};
+
+const applyRegexToValue = (regex: RegExp, value: string, text?: string) => {
+  const target = text ?? value;
+  const match = target.match(regex);
+  if (!match) {
+    return undefined;
+  }
+
+  if (match.length > 1 && match[1] !== undefined) {
+    return { value: match[1], text: match[1] };
+  }
+
+  return { value: target, text: target };
+};
+
+// Fallback for query variables when only the raw query model is available: run /api/ds/query and map the first columns.
+// Required for $__all expansion when the datasource doesn’t expose variable options directly.
+const runQueryVariableFallback = async (
+  variable: Partial<DashboardTemplateVariable>,
+  interpolatedQuery: string,
+  datasourceRef: any,
+  rawRange: RawTimeRange,
+  timeRange: { from: number; to: number } | undefined,
+  templateSrvInstance?: { replace?: (target?: string, scopedVars?: ScopedVars, format?: string | Function) => string },
+  scopedVars?: ScopedVars
+) => {
+  const dsSettings = getDataSourceSrv().getInstanceSettings(datasourceRef as any);
+  if (!dsSettings?.uid) {
+    console.warn('Missing datasource settings for variable query fallback');
+    return [];
+  }
+
+  try {
+    // Build a datasource-specific query (with interpolation) so plugins can respond even without exposing variable helpers.
+    const payload = buildDatasourceQueryPayload(
+      variable,
+      interpolatedQuery,
+      dsSettings,
+      templateSrvInstance,
+      scopedVars,
+      timeRange
+    );
+    const resultKey = payload.refId ?? 'Var';
+
+    const response = await getBackendSrv().post('/api/ds/query', {
+      queries: [payload],
+      from: rawRange?.from ?? timeRange?.from,
+      to: rawRange?.to ?? timeRange?.to,
+    });
+
+    // Respect the refId used in the payload; plugins echo it back in results.
+    const frames = response?.results?.[resultKey]?.frames;
+    if (!frames?.length) {
+      return [];
+    }
+
+
+    const mapped: Array<{ value?: any; text?: any; selected?: boolean }> = [];
+
+    for (const frame of frames) {
+      const fields: Array<{ name?: string; type?: string; typeInfo?: { frame?: string } }> =
+        frame?.schema?.fields ?? [];
+      const values: any[][] = frame?.data?.values ?? [];
+      if (!fields.length || !values.length) {
+        continue;
+      }
+
+      let valueIndex = fields.findIndex((f) => f?.name === '__value' || f?.name === 'value');
+      let textIndex = fields.findIndex((f) => f?.name === '__text' || f?.name === 'text');
+
+      if (valueIndex < 0 && textIndex < 0) {
+        // Fall back to the first string column when explicit __value/__text hints are missing.
+        const firstString = fields.findIndex((f) => f?.type === 'string' || f?.typeInfo?.frame === 'string');
+        if (firstString >= 0) {
+          valueIndex = firstString;
+          textIndex = firstString;
+        }
+      }
+
+      if (valueIndex < 0) {
+        valueIndex = Math.max(0, Math.min(fields.length - 1, 0));
+      }
+      if (textIndex < 0) {
+        textIndex = valueIndex;
+      }
+
+      const valueColumn = values[valueIndex] ?? [];
+      const textColumn = values[textIndex] ?? [];
+      const rowCount = Math.max(valueColumn.length, textColumn.length);
+
+      for (let i = 0; i < rowCount; i++) {
+        const value = valueColumn[i];
+        if (value === undefined || value === null || value === '') {
+          continue;
+        }
+        const text = textColumn[i];
+        mapped.push({ value: String(value), text: text === undefined ? undefined : String(text), selected: false });
+      }
+    }
+
+    return mapped;
+  } catch (error) {
+    console.warn('Fallback variable query failed', error);
+    return [];
+  }
+};
+
+// Builds a datasource-specific query payload from the variable definition.
+const buildDatasourceQueryPayload = (
+  variable: Partial<DashboardTemplateVariable>,
+  interpolatedQuery: string,
+  dsSettings: { uid: string; type: string },
+  templateSrvInstance?: { replace?: (target?: string, scopedVars?: ScopedVars, format?: string | Function) => string },
+  scopedVars?: ScopedVars,
+  timeRange?: { from: number; to: number }
+) => {
+  const rawQuery = (variable as any)?.query;
+  let payload: Record<string, any>;
+
+  if (rawQuery && typeof rawQuery === 'object') {
+    payload = interpolateObject(rawQuery, templateSrvInstance, scopedVars);
+  } else {
+    // Default to a minimal query payload; plugins vary on format handling.
+    // We pass the interpolated SQL both as `query` and, below, mirror it into `rawSql`/`sql`
+    // so datasource plugins with different field names can consume it.
+    payload = {
+      query: interpolatedQuery,
+    };
+  }
+
+  // If the plugin expects rawSql/sql but only a query string is present, mirror it.
+  if (!payload.rawSql && typeof payload.query === 'string') {
+    payload.rawSql = payload.query;
+  }
+  if (!payload.rawQuery && typeof payload.query === 'string') {
+    payload.rawQuery = payload.query;
+  }
+  if (!payload.sql && typeof payload.query === 'string') {
+    payload.sql = payload.query;
+  }
+  // Only add a default format for SQL-style datasources; some plugins (e.g., Trino) reject string formats.
+  if (!payload.format && typeof payload.query === 'string' && !String(dsSettings.type ?? '').includes('trino')) {
+    payload.format = 'table';
+  }
+
+  // Grafana usually adds these for query requests; helpful for plugins that expect them.
+  if (timeRange?.from !== undefined && timeRange?.to !== undefined) {
+    const span = Math.max(1, timeRange.to - timeRange.from);
+    payload.intervalMs = Math.max(50, Math.floor(span / 100));
+    payload.maxDataPoints = Math.max(1, Math.floor(span / payload.intervalMs));
+  }
+
+  return {
+    refId: (payload as any)?.refId ?? 'Var',
+    datasource: { uid: dsSettings.uid },
+    ...payload,
+  };
+};
+
+// Recursively interpolates string fields in query payloads.
+const interpolateObject = (
+  input: any,
+  templateSrvInstance?: { replace?: (target?: string, scopedVars?: ScopedVars, format?: string | Function) => string },
+  scopedVars?: ScopedVars
+): any => {
+  if (typeof input === 'string') {
+    return templateSrvInstance?.replace?.(input, scopedVars) ?? input;
+  }
+
+  if (Array.isArray(input)) {
+    return input.map((item) => interpolateObject(item, templateSrvInstance, scopedVars));
+  }
+
+  if (input && typeof input === 'object') {
+    const result: Record<string, any> = {};
+    for (const [key, value] of Object.entries(input)) {
+      result[key] = interpolateObject(value, templateSrvInstance, scopedVars);
+    }
+    return result;
+  }
+
+  return input;
 };
 
 // Normalizes mixed Grafana variable shapes into consistent value/text pairs.
@@ -901,8 +1246,30 @@ const getScopedVariableOverrides = (scopedVars?: ScopedVars): VariableValueMap |
   return Object.keys(overrides).length ? overrides : undefined;
 };
 
-const hasScopedOverride = (scopedVars: ScopedVars | undefined, variableName: string) =>
-  Boolean(scopedVars?.[variableName]);
+const hasScopedOverride = (scopedVars: ScopedVars | undefined, variableName: string, repeatValues?: VariableValue[]) => {
+  if (repeatValues?.length && repeatValues.length > 1) {
+    return false;
+  }
+  const scoped = scopedVars?.[variableName];
+  if (!scoped) {
+    return false;
+  }
+  const scopedValues = toArray(scoped.value ?? scoped.text);
+  // If multiple values are present (e.g., $__all or multi-select), let repeats expand them.
+  if (scopedValues.length !== 1) {
+    return false;
+  }
+  // If a single string contains comma-separated values (Grafana sometimes serializes multi values as a string), treat it as multi.
+  const single = scopedValues[0];
+  if (typeof single === 'string' && single.includes(',')) {
+    return false;
+  }
+  // Allow repeats to expand $__all even when Grafana injects scopedVars for the current selection.
+  if (scopedValues.some((entry) => isAllValue({ value: entry } as VariableValue))) {
+    return false;
+  }
+  return true;
+};
 
 const mergeScopedVars = (parent?: ScopedVars, child?: ScopedVars): ScopedVars | undefined => {
   if (!parent) {
@@ -1071,7 +1438,8 @@ const renderBrandingArea = (
     .filter((element) => element.type === 'text' && element.placement === placement)
     .forEach((element) => {
       const fontSize =
-        element.fontSize ?? (placement === 'footer' ? layoutSettings.footer.lineHeight : layoutSettings.header.lineHeight);
+        element.fontSize ??
+        (placement === 'footer' ? layoutSettings.footer.lineHeight : layoutSettings.header.lineHeight);
       pdf.setFont(
         element.fontFamily ?? layoutSettings.pageNumber.fontFamily,
         element.fontStyle ?? layoutSettings.pageNumber.fontStyle ?? 'normal'
@@ -1151,11 +1519,7 @@ const withAbort = async <T>(promise: Promise<T>, signal?: AbortSignal): Promise<
   });
 };
 
-const runWithConcurrency = async <T>(
-  items: T[],
-  limit: number,
-  worker: (item: T, index: number) => Promise<void>
-) => {
+const runWithConcurrency = async <T>(items: T[], limit: number, worker: (item: T, index: number) => Promise<void>) => {
   if (!items.length) {
     return;
   }
