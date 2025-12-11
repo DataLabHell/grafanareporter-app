@@ -1,0 +1,45 @@
+services:
+  grafana:
+    extends:
+      file: ./docker-compose.yaml
+      service: grafana
+    volumes:
+      - ./provisioning-debug/datasources/datasources.yaml:/etc/grafana/provisioning/datasources/debug-datasources.yaml:ro
+      - ./provisioning-debug/provider.yaml:/etc/grafana/provisioning/dashboards/debug-provider.yaml:ro
+      - ./provisioning-debug/dashboards:/etc/grafana/provisioning/dashboards-debug:ro
+  grafana-renderer:
+    extends:
+      file: ./docker-compose.yaml
+      service: grafana-renderer
+  trino:
+    image: trinodb/trino:478
+    ports:
+      - 8080:8080
+    volumes:
+      - ./provisioning-debug/trino/catalog:/etc/trino/catalog
+  postgres:
+    image: postgres:16
+    container_name: postgres-test
+    environment:
+      POSTGRES_HOST_AUTH_METHOD: trust # disables password auth
+      POSTGRES_DB: testdb # database created on startup
+      POSTGRES_USER: testuser # user created
+      POSTGRES_PASSWORD: "" # unused, because of trust mode
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./provisioning-debug/postgresql/initdb:/docker-entrypoint-initdb.d # contains initial SQL
+    restart: unless-stopped
+  http-echo:
+    image: hashicorp/http-echo:1.0.0
+    command:
+      [
+        "-listen=:8085",
+        '-text=[{"text":"Alice","value":"alice"},{"text":"Bob","value":"bob"},{"text":"Carol","value":"carol"}]',
+      ]
+    ports:
+      - "8085:8085"
+
+volumes:
+  pgdata:
