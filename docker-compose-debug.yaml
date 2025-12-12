@@ -33,10 +33,10 @@ services:
     restart: unless-stopped
   http-echo:
     image: hashicorp/http-echo:1.0.0
-    command:
-      [
+    command: [
         "-listen=:8085",
-        '-text=[{"text":"Alice","value":"alice"},{"text":"Bob","value":"bob"},{"text":"Carol","value":"carol"}]',
+        #'-text=[{"text":"Alice","value":"alice"},{"text":"Bob","value":"bob"},{"text":"Carol","value":"carol"}]',
+        '-text=["1","2","3"]',
       ]
     ports:
       - "8085:8085"

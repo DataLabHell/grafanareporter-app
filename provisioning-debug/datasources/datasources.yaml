@@ -25,3 +25,16 @@ datasources:
     isDefault: true
     jsonData: {}
     editable: true
+
+  - name: yesoreyeram-infinity-datasource
+    uid: cf6secus71zb4c
+    type: yesoreyeram-infinity-datasource
+    access: proxy
+    url: ""
+    user: ""
+    database: ""
+    basicAuth: false
+    isDefault: false
+    jsonData: {}
+    readOnly: false
+    editable: true
