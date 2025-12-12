@@ -675,7 +675,8 @@ const resolveQueryVariableValues = async (
     try {
       const datasourceRef = (variable as any).datasource;
       const scopedVars = buildScopedVarsFromValueMap(existingValues);
-      const interpolatedQuery = templateSrvInstance?.replace?.(query, scopedVars) ?? query;
+      const interpolatedQuery =
+        typeof query === 'string' ? templateSrvInstance?.replace?.(query, scopedVars) ?? query : query;
 
       const options = await runQueryVariableFallback(
         variable,
@@ -778,18 +779,34 @@ const toArray = (input: any) => {
 // Extracts the raw query string from a query variable definition.
 const extractQueryVariableQuery = (variable: Partial<DashboardTemplateVariable>) => {
   const query = (variable as any)?.query;
+  const infinityQuery = query?.infinityQuery;
   if (!query) {
+    if (infinityQuery) {
+      return infinityQuery;
+    }
     return undefined;
   }
 
   if (typeof query === 'string') {
-    return query;
+    const trimmed = query.trim();
+    if (trimmed) {
+      return trimmed;
+    }
+    if (infinityQuery) {
+      return infinityQuery;
+    }
+    return undefined;
   }
 
-  if (typeof query === 'object' && 'query' in query) {
+  if (typeof query === 'object' && 'query' in query && (query as any).query) {
     return (query as any).query;
   }
 
+  if (typeof query === 'object') {
+    return query;
+  }
+
+  // Return object payloads as-is for datasources (e.g., Infinity) that store the full model on `query`.
   return undefined;
 };
 
@@ -963,14 +980,25 @@ const buildDatasourceQueryPayload = (
   timeRange?: { from: number; to: number }
 ) => {
   const rawQuery = (variable as any)?.query;
+  const infinityQuery = rawQuery?.infinityQuery;
+
   let payload: Record<string, any>;
+
+  // Infinity datasource stores the full query model on `infinityQuery`; forward it as-is.
+  if (infinityQuery && typeof infinityQuery === 'object') {
+    const interpolatedInfinity = interpolateObject(infinityQuery, templateSrvInstance, scopedVars);
+    return {
+      refId: (interpolatedInfinity as any)?.refId ?? 'Var',
+      queryType: rawQuery?.queryType ?? 'infinity',
+      datasource: { uid: dsSettings.uid, type: dsSettings.type },
+      ...interpolatedInfinity,
+    };
+  }
 
   if (rawQuery && typeof rawQuery === 'object') {
     payload = interpolateObject(rawQuery, templateSrvInstance, scopedVars);
   } else {
     // Default to a minimal query payload; plugins vary on format handling.
-    // We pass the interpolated SQL both as `query` and, below, mirror it into `rawSql`/`sql`
-    // so datasource plugins with different field names can consume it.
     payload = {
       query: interpolatedQuery,
     };
