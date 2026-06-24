@@ -18,11 +18,13 @@ import { css } from '@emotion/css';
 import { GrafanaTheme2 } from '@grafana/data';
 import { Button, Field, Icon, Input, useStyles2 } from '@grafana/ui';
 import React, { useRef, useState } from 'react';
+import { blobToDataUrl } from '../../report/util/blob';
 import { LogoLibraryItem } from '../../types/reporting';
 import {
   MAX_LOGO_BYTES,
   createLogoId,
   dataUrlByteSize,
+  deriveLogoNameFromUrl,
   formatBytes,
   isImageMimeType,
   validateLogoDataUrl,
@@ -40,6 +42,8 @@ export const LogoLibrary = ({ logos, selectedId, onChange, onSelect }: Props) =>
   const styles = useStyles2(getStyles);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string>();
+  const [urlInput, setUrlInput] = useState('');
+  const [fetching, setFetching] = useState(false);
 
   const handleFile = (file: File | null) => {
     setError(undefined);
@@ -67,6 +71,36 @@ export const LogoLibrary = ({ logos, selectedId, onChange, onSelect }: Props) =>
     };
     reader.onerror = () => setError('Failed to read the selected file.');
     reader.readAsDataURL(file);
+  };
+
+  const handleAddFromUrl = async () => {
+    setError(undefined);
+    const url = urlInput.trim();
+    if (!url) {
+      return;
+    }
+    setFetching(true);
+    try {
+      // Backend-less: the download happens in the browser, so cross-origin hosts must allow CORS.
+      // We store the result as a data URI so report-time embedding never depends on the remote host.
+      const response = await fetch(url, { credentials: 'same-origin' });
+      if (!response.ok) {
+        throw new Error(`Request failed (${response.status})`);
+      }
+      const blob = await response.blob();
+      const dataUrl = await blobToDataUrl(blob);
+      const validationError = validateLogoDataUrl(dataUrl);
+      if (validationError) {
+        setError(validationError);
+        return;
+      }
+      onChange([...logos, { id: createLogoId(url, logos), name: deriveLogoNameFromUrl(url), dataUrl }]);
+      setUrlInput('');
+    } catch (err) {
+      setError('Could not fetch the image (the host may block cross-origin requests). Download it and upload instead.');
+    } finally {
+      setFetching(false);
+    }
   };
 
   const handleRename = (id: string, name: string) => {
@@ -104,6 +138,30 @@ export const LogoLibrary = ({ logos, selectedId, onChange, onSelect }: Props) =>
           />
         </div>
 
+        <div className={styles.urlRow}>
+          <Input
+            value={urlInput}
+            placeholder="https://example.com/logo.png"
+            aria-label="Logo image URL"
+            onChange={(event: React.ChangeEvent<HTMLInputElement>) => setUrlInput(event.currentTarget.value)}
+            onKeyDown={(event: React.KeyboardEvent<HTMLInputElement>) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                handleAddFromUrl();
+              }
+            }}
+          />
+          <Button
+            type="button"
+            variant="secondary"
+            icon="link"
+            disabled={!urlInput.trim() || fetching}
+            onClick={handleAddFromUrl}
+          >
+            {fetching ? 'Fetching…' : 'Add from URL'}
+          </Button>
+        </div>
+
         {error && <div className={styles.error}>{error}</div>}
 
         {logos.length === 0 ? (
@@ -128,7 +186,7 @@ export const LogoLibrary = ({ logos, selectedId, onChange, onSelect }: Props) =>
                     {logo.dataUrl.startsWith('data:') ? (
                       <span className={styles.size}>{formatBytes(dataUrlByteSize(logo.dataUrl))}</span>
                     ) : (
-                      <span className={styles.size}>External URL</span>
+                      <span className={styles.size}>Linked image</span>
                     )}
                   </div>
                   <div className={styles.itemActions}>
@@ -174,6 +232,12 @@ const getStyles = (theme: GrafanaTheme2) => ({
     display: 'flex',
     alignItems: 'center',
     gap: theme.spacing(1.5),
+  }),
+  urlRow: css({
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing(1),
+    maxWidth: 520,
   }),
   hint: css({
     color: theme.colors.text.secondary,
