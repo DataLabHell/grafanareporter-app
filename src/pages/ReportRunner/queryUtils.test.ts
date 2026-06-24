@@ -110,7 +110,12 @@ describe('buildReportParams', () => {
   });
 
   it('round-trips layout enums back through parseLayoutOverrides', () => {
-    const params = buildReportParams('abcd1234', snapshot);
+    // Logo placement is only serialized when the logo is enabled (default is no logo).
+    const withLogo: AdvancedSettingsSnapshot = {
+      ...snapshot,
+      layout: { ...DEFAULT_LAYOUT_SETTINGS, logo: { ...DEFAULT_LAYOUT_SETTINGS.logo, enabled: true } },
+    };
+    const params = buildReportParams('abcd1234', withLogo);
     const { layout } = parseLayoutOverrides(params);
     expect(layout?.orientation).toBe(DEFAULT_LAYOUT_SETTINGS.orientation);
     expect(layout?.logo?.placement).toBe(DEFAULT_LAYOUT_SETTINGS.logo.placement);

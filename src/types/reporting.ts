@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-import pluginJson from '../plugin.json';
-
 export type ReportTheme = 'light' | 'dark' | 'user';
 export type ReportOrientation = 'portrait' | 'landscape';
 
@@ -182,8 +180,9 @@ export const DEFAULT_LAYOUT_SETTINGS: ResolvedLayoutSettings = {
     height: 1800,
   },
   logo: {
-    enabled: true,
-    url: `/public/plugins/${pluginJson.id}/img/dlh-logo.svg`,
+    // No logo ships by default: users add their own via the logo library or provisioning.
+    enabled: false,
+    url: '',
     id: '',
     placement: 'footer',
     alignment: 'left',
