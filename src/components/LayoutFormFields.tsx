@@ -45,6 +45,12 @@ import {
 import { LAYOUT_FIELD_LABELS, LAYOUT_NUMERIC_FIELD_LABELS } from '../utils/layoutFields';
 import { LAYOUT_NUMERIC_CONSTRAINTS, LayoutDraftErrors, LayoutNumericField } from '../utils/layoutValidation';
 
+// Grafana control width units are ~8px each. Keep selects/inputs compact instead of stretching the form width.
+const SELECT_WIDTH = 32;
+const NUMERIC_WIDTH = 24;
+const SHORT_WIDTH = 16;
+const TEXT_WIDTH = 40;
+
 interface Props {
   layout: LayoutSettings;
   numericValues: Partial<Record<LayoutNumericField, string | number>>;
@@ -112,6 +118,7 @@ const NumericInput = ({
     >
       <Input
         type="number"
+        width={NUMERIC_WIDTH}
         min={meta?.min}
         step={step}
         value={values[field] ?? ''}
@@ -254,6 +261,7 @@ export const LayoutFormFields = ({
                 description={LAYOUT_FIELD_LABELS.panelsTitleFontFamily.description}
               >
                 <Select
+                  width={SELECT_WIDTH}
                   options={fontFamilyOptions}
                   placeholder={`Default (${DEFAULT_FONT_FAMILY})`}
                   value={toFontOption(layout.panels?.title?.fontFamily)}
@@ -266,6 +274,7 @@ export const LayoutFormFields = ({
                 description={LAYOUT_FIELD_LABELS.panelsTitleFontStyle.description}
               >
                 <Select
+                  width={SELECT_WIDTH}
                   options={fontStyleOptions}
                   placeholder="Default (normal)"
                   value={toFontStyleOption(layout.panels?.title?.fontStyle)}
@@ -402,6 +411,7 @@ export const LayoutFormFields = ({
                 description={LAYOUT_FIELD_LABELS.pageNumberFontFamily.description}
               >
                 <Select
+                  width={SELECT_WIDTH}
                   options={fontFamilyOptions}
                   placeholder={`Default (${DEFAULT_FONT_FAMILY})`}
                   value={toFontOption(layout.pageNumber?.fontFamily)}
@@ -414,6 +424,7 @@ export const LayoutFormFields = ({
                 description={LAYOUT_FIELD_LABELS.pageNumberFontStyle.description}
               >
                 <Select
+                  width={SELECT_WIDTH}
                   options={fontStyleOptions}
                   placeholder="Default (normal)"
                   value={toFontStyleOption(layout.pageNumber?.fontStyle)}
@@ -436,6 +447,7 @@ export const LayoutFormFields = ({
                 description={LAYOUT_FIELD_LABELS.pageNumberLanguage.description}
               >
                 <Input
+                  width={SHORT_WIDTH}
                   placeholder="en"
                   value={layout.pageNumber?.language ?? ''}
                   onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
@@ -465,6 +477,7 @@ export const LayoutFormFields = ({
                 description={LAYOUT_FIELD_LABELS.customTextContent.description}
               >
                 <Input
+                  width={TEXT_WIDTH}
                   placeholder="Custom text"
                   value={element.content}
                   onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
@@ -491,6 +504,7 @@ export const LayoutFormFields = ({
                 description={LAYOUT_FIELD_LABELS.customTextFontFamily.description}
               >
                 <Select
+                  width={SELECT_WIDTH}
                   options={fontFamilyOptions}
                   placeholder={`Default (${DEFAULT_FONT_FAMILY})`}
                   value={toFontOption(element.fontFamily)}
@@ -503,6 +517,7 @@ export const LayoutFormFields = ({
                 description={LAYOUT_FIELD_LABELS.customTextFontStyle.description}
               >
                 <Select
+                  width={SELECT_WIDTH}
                   options={fontStyleOptions}
                   placeholder="Default (normal)"
                   value={toFontStyleOption(element.fontStyle)}
@@ -518,6 +533,7 @@ export const LayoutFormFields = ({
               >
                 <Input
                   type="number"
+                  width={SHORT_WIDTH}
                   min={1}
                   value={element.fontSize ?? ''}
                   onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
