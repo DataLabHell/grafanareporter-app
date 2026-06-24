@@ -23,14 +23,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { getReportStyles } from 'styles/reportStyles';
 import { PLUGIN_BASE_URL, ROUTES } from '../constants';
 import pluginJson from '../plugin.json';
-import { ensureReporterSettings, getReporterSettings, setReporterSettings } from '../state/pluginSettings';
-import {
-  LayoutSettings,
-  ReportTheme,
-  ReporterPluginSettings,
-  ResolvedLayoutSettings,
-  resolveLayoutSettings,
-} from '../types/reporting';
+import { LayoutSettings, ReportTheme, resolveLayoutSettings } from '../types/reporting';
 import { mergeLayoutPatch, numericFieldToPatch } from '../utils/layoutForm';
 import {
   LAYOUT_NUMERIC_CONSTRAINTS,
@@ -41,8 +34,11 @@ import {
   mergeDraftValues,
   validateLayoutDraft,
 } from '../utils/layoutValidation';
-import { generateDashboardReport } from '../utils/reportGenerator';
 import { AdvancedSettingsPanel } from './ReportRunner/AdvancedSettingsPanel';
+import { useDashboardSearch } from './ReportRunner/hooks/useDashboardSearch';
+import { useReportGeneration } from './ReportRunner/hooks/useReportGeneration';
+import { useReporterSettings } from './ReportRunner/hooks/useReporterSettings';
+import { mergeResolvedLayouts } from './ReportRunner/layoutMerge';
 import {
   DEFAULT_TIME_RANGE,
   buildManualVariablesFromParams,
@@ -54,114 +50,32 @@ import {
   parseLayoutOverrides,
   parseVariablesText,
 } from './ReportRunner/queryUtils';
-import {
-  AdvancedSettingsSnapshot,
-  DashboardDetailsResponse,
-  DashboardSearchHit,
-  ManualRunContext,
-} from './ReportRunner/types';
+import { AdvancedSettingsSnapshot, DashboardDetailsResponse, ManualRunContext } from './ReportRunner/types';
 
 const LAYOUT_ERROR_MESSAGE = 'Fix the highlighted layout overrides before generating the report.';
 
 const userThemePreference: ReportTheme = config.bootData?.user?.theme === 'light' ? 'light' : 'dark';
 
-// Deep merge base layout with overrides so defaults (e.g., provisioned logo/url) survive partial overrides.
-const mergeLayouts = (
-  base: ResolvedLayoutSettings,
-  override?: LayoutSettings | ResolvedLayoutSettings
-): ResolvedLayoutSettings => {
-  if (!override) {
-    return base;
-  }
-
-  const panels = override.panels || {};
-  const titleOverride = panels.title || {};
-  const logoOverride = override.logo || {};
-  const pageNumberOverride = override.pageNumber || {};
-
-  const mergedTitleEnabled = titleOverride.enabled !== undefined ? titleOverride.enabled : base.panels.title.enabled;
-
-  return {
-    ...base,
-    ...override,
-    panels: {
-      ...base.panels,
-      ...panels,
-      title: {
-        ...base.panels.title,
-        ...titleOverride,
-        enabled: mergedTitleEnabled,
-      },
-    },
-    logo: {
-      ...base.logo,
-      ...logoOverride,
-    },
-    pageNumber: {
-      ...base.pageNumber,
-      ...pageNumberOverride,
-    },
-    pageMargin: override.pageMargin ?? base.pageMargin,
-    header: {
-      ...base.header,
-      ...(override.header || {}),
-    },
-    footer: {
-      ...base.footer,
-      ...(override.footer || {}),
-    },
-  };
-};
-
 const ReportRunner = () => {
-  const [pluginSettingsState, setPluginSettingsState] = useState<ReporterPluginSettings>(() => getReporterSettings());
-  const [settingsReady, setSettingsReady] = useState<boolean>(false);
+  const { pluginSettings, settingsReady, layoutDefaults } = useReporterSettings();
+  const { dashboards, dashboardsError, isFetchingDashboards } = useDashboardSearch();
+  const {
+    status,
+    setStatus,
+    messages,
+    setMessages,
+    error,
+    setError,
+    isGenerating,
+    setIsGenerating,
+    runReport,
+    cancel,
+  } = useReportGeneration(pluginSettings);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    const loadSettings = async () => {
-      try {
-        const response = await getBackendSrv().get<{ jsonData?: ReporterPluginSettings }>(
-          `/api/plugins/${pluginJson.id}/settings`
-        );
-        if (cancelled) {
-          return;
-        }
-        const normalized = ensureReporterSettings(response?.jsonData);
-        setReporterSettings(normalized);
-        setPluginSettingsState(getReporterSettings());
-      } catch (error) {
-        console.warn('Failed to load reporter settings', error);
-      } finally {
-        if (!cancelled) {
-          setSettingsReady(true);
-        }
-      }
-    };
-
-    loadSettings();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const layoutDefaults = useMemo(
-    () => resolveLayoutSettings(getReporterSettings(pluginSettingsState).layout),
-    [pluginSettingsState]
-  );
   const location = useLocation();
   const navigate = useNavigate();
-  const [status, setStatus] = useState<'idle' | 'working' | 'success' | 'error'>('idle');
-  const [messages, setMessages] = useState<string[]>([]);
-  const [error, setError] = useState<string>();
   const [formError, setFormError] = useState<string>();
-  const [dashboards, setDashboards] = useState<DashboardSearchHit[]>([]);
-  const [dashboardsError, setDashboardsError] = useState<string>();
-  const [isFetchingDashboards, setIsFetchingDashboards] = useState<boolean>(false);
   const [selectedUid, setSelectedUid] = useState<string | undefined>();
-  const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [advancedOpen, setAdvancedOpen] = useState<boolean>(false);
   const [isGlobalOverridesOpen, setIsGlobalOverridesOpen] = useState(false);
   const [advancedSettings, setAdvancedSettings] = useState<AdvancedSettingsSnapshot>({
@@ -183,14 +97,14 @@ const ReportRunner = () => {
       setStatus('idle');
       setError(undefined);
     }
-  }, [error, status]);
+  }, [error, status, setStatus, setError]);
 
-  const triggerLayoutErrorBanner = () => {
+  const triggerLayoutErrorBanner = useCallback(() => {
     setAdvancedOpen(true);
     setIsGlobalOverridesOpen(true);
     setStatus('error');
     setError(LAYOUT_ERROR_MESSAGE);
-  };
+  }, [setStatus, setError]);
 
   const applyLayoutErrors = useCallback(
     (updater: LayoutErrorsUpdater) => {
@@ -208,7 +122,7 @@ const ReportRunner = () => {
         return next;
       });
     },
-    [clearLayoutErrorBanner]
+    [clearLayoutErrorBanner, triggerLayoutErrorBanner]
   );
 
   useEffect(() => {
@@ -226,144 +140,9 @@ const ReportRunner = () => {
   }, [layoutDefaults, hasLayoutOverride, applyLayoutErrors]);
 
   const [prefillFromDashboard, setPrefillFromDashboard] = useState<boolean>(false);
-  const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    let mounted = true;
-
-    const fetchDashboards = async () => {
-      setIsFetchingDashboards(true);
-      setDashboardsError(undefined);
-      try {
-        const response = await getBackendSrv().get<DashboardSearchHit[]>('/api/search', {
-          type: 'dash-db',
-          limit: 500,
-        });
-        if (mounted) {
-          setDashboards(response);
-        }
-      } catch (err) {
-        if (mounted) {
-          setDashboardsError('Failed to load dashboards. Refresh the page or check your permissions.');
-        }
-      } finally {
-        if (mounted) {
-          setIsFetchingDashboards(false);
-        }
-      }
-    };
-
-    fetchDashboards();
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  const runReport = useCallback(
-    (context: ManualRunContext, layoutOverride?: ResolvedLayoutSettings, themeOverride?: ReportTheme) => {
-      if (!context.dashboardUid) {
-        setStatus('error');
-        setError('Please select a dashboard before generating the report.');
-        return;
-      }
-
-      // Cancel any previous run only if something is currently running.
-      if (isGenerating && abortControllerRef.current && !abortControllerRef.current.signal.aborted) {
-        abortControllerRef.current.abort();
-      }
-      const controller = new AbortController();
-      abortControllerRef.current = controller;
-
-      setStatus('working');
-      setMessages([]);
-      setError(undefined);
-      setIsGenerating(true);
-
-      const baseSettings = getReporterSettings(pluginSettingsState);
-      const baseLayout = resolveLayoutSettings(baseSettings?.layout);
-      const mergeLayouts = (
-        base: ResolvedLayoutSettings,
-        override?: ResolvedLayoutSettings
-      ): ResolvedLayoutSettings => {
-        if (!override) {
-          return base;
-        }
-
-        const mergedPanels = {
-          ...base.panels,
-          ...(override.panels || {}),
-          title: {
-            ...base.panels.title,
-            ...(override.panels?.title || {}),
-          },
-        };
-
-        const mergedLogo = {
-          ...base.logo,
-          ...(override.logo || {}),
-        };
-
-        const mergedPageNumber = {
-          ...base.pageNumber,
-          ...(override.pageNumber || {}),
-        };
-
-        const mergedFooter = {
-          ...base.footer,
-          ...(override.footer || {}),
-        };
-
-        return {
-          ...base,
-          ...override,
-          panels: mergedPanels,
-          logo: mergedLogo,
-          pageNumber: mergedPageNumber,
-          pageMargin: override.pageMargin ?? base.pageMargin,
-          footer: mergedFooter,
-        };
-      };
-
-      const mergedLayout = mergeLayouts(baseLayout, layoutOverride);
-      const settings: ReporterPluginSettings = { ...(baseSettings ?? {}), layout: mergedLayout };
-      if (themeOverride) {
-        settings.themePreference = themeOverride;
-      }
-      generateDashboardReport({
-        settings,
-        onProgress: (message) => setMessages((prev) => [...prev, message]),
-        manualContext: {
-          dashboardUid: context.dashboardUid,
-          dashboardTitle: context.dashboardTitle,
-          timeRange: coerceRawRange(context.timeRange),
-          timeZone: context.timeZone ?? 'browser',
-          variables: context.variables,
-        },
-        signal: controller.signal,
-      })
-        .then(() => setStatus('success'))
-        .catch((err) => {
-          if (err instanceof DOMException && err.name === 'AbortError') {
-            setStatus('idle');
-            setMessages((prev) => [...prev, 'Report generation cancelled.']);
-            return;
-          }
-          setStatus('error');
-          setError(err instanceof Error ? err.message : 'An unexpected error occurred while generating the report.');
-        })
-        .finally(() => {
-          setIsGenerating(false);
-          if (abortControllerRef.current === controller) {
-            abortControllerRef.current = null;
-          }
-        });
-    },
-    [pluginSettingsState, isGenerating]
-  );
-
-  useEffect(() => {
-    if (!settingsReady || !pluginSettingsState) {
+    if (!settingsReady || !pluginSettings) {
       return;
     }
 
@@ -396,7 +175,7 @@ const ReportRunner = () => {
     // Mark this query as processed so the auto-run effect does not trigger a second run on re-render.
     lastAppliedQueryRef.current = currentQuery;
 
-    const normalizedLayout = mergeLayouts(layoutDefaults, parsedLayoutOverride);
+    const normalizedLayout = mergeResolvedLayouts(layoutDefaults, parsedLayoutOverride);
     const draftFromLayout = createLayoutDraft(normalizedLayout);
     const mergedDraft = numericOverrides ? { ...draftFromLayout, ...numericOverrides } : draftFromLayout;
     setLayoutDraft(mergedDraft);
@@ -448,7 +227,7 @@ const ReportRunner = () => {
 
     runReport(normalizedContext, layoutOverrideForRun, theme ?? userThemePreference);
     lastAppliedQueryRef.current = currentQuery;
-  }, [location.search, layoutDefaults, pluginSettingsState, runReport, settingsReady, applyLayoutErrors]);
+  }, [location.search, layoutDefaults, pluginSettings, runReport, settingsReady, applyLayoutErrors]);
 
   const dashboardsOptions = useMemo<Array<SelectableValue<string>>>(
     () =>
@@ -515,7 +294,7 @@ const ReportRunner = () => {
   };
   const handleTimezoneChange = (value: TimeZone | 'browser') =>
     setAdvancedSettings((prev) => ({ ...prev, timezone: value }));
-  const handleThemeChange = (value: ReportTheme) => setAdvancedSettings((prev) => ({ ...prev, theme: value }));
+  const handleThemeChange = (value: ReportTheme) => setAdvancedSettings((prev) => ({ ...prev, reportTheme: value }));
   const handleVariablesChange = (value: string) => setAdvancedSettings((prev) => ({ ...prev, variablesText: value }));
   const setLayoutFromForm: React.Dispatch<React.SetStateAction<LayoutSettings>> = (updater) => {
     setHasLayoutOverride(true);
@@ -600,11 +379,11 @@ const ReportRunner = () => {
 
         setAdvancedSettings({
           range: coerceRawRange(defaultTime),
-        timezone: 'browser',
-        reportTheme: userThemePreference,
-        variablesText: formatVariablesText(defaultVariables),
-        layout: layoutDefaults,
-      });
+          timezone: 'browser',
+          reportTheme: userThemePreference,
+          variablesText: formatVariablesText(defaultVariables),
+          layout: layoutDefaults,
+        });
         setLayoutDraft(createLayoutDraft(layoutDefaults));
         applyLayoutErrors({});
       } catch (error) {
@@ -682,13 +461,6 @@ const ReportRunner = () => {
     lastAppliedQueryRef.current = currentQuery;
   };
 
-  const cancelReportGeneration = () => {
-    if (!abortControllerRef.current) {
-      return;
-    }
-    abortControllerRef.current.abort();
-  };
-
   const styles = useStyles2(getReportStyles);
 
   return (
@@ -758,7 +530,7 @@ const ReportRunner = () => {
             <span>
               <Spinner inline size={16} /> Generating report…
             </span>
-            <Button variant="secondary" type="button" onClick={cancelReportGeneration} disabled={!isGenerating}>
+            <Button variant="secondary" type="button" onClick={cancel} disabled={!isGenerating}>
               Cancel
             </Button>
           </div>
