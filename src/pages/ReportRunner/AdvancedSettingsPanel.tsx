@@ -19,9 +19,10 @@ import { TimeZone } from '@grafana/schema';
 import {
   Button,
   ClipboardButton,
+  Combobox,
+  ComboboxOption,
   Field,
   RadioButtonGroup,
-  Select,
   TextArea,
   TimeRangeInput,
   useStyles2,
@@ -36,13 +37,13 @@ interface Props {
   isOpen: boolean;
   timePickerValue: TimeRange;
   onTimeRangeChange: (range: TimeRange) => void;
-  timezoneOptions: Array<SelectableValue<TimeZone | 'browser'>>;
+  timezoneOptions: Array<ComboboxOption<string>>;
   selectedTimezone: TimeZone | 'browser';
   onTimezoneChange: (value: TimeZone | 'browser') => void;
   themeOptions: Array<SelectableValue<ReportTheme>>;
   selectedTheme: ReportTheme;
   onThemeChange: (value: ReportTheme) => void;
-  logoOptions?: Array<SelectableValue<string>>;
+  logoOptions?: Array<ComboboxOption<string>>;
   selectedLogoId?: string;
   onLogoSelect?: (id: string | undefined) => void;
   variablesText: string;
@@ -100,7 +101,7 @@ export const AdvancedSettingsPanel = ({
     }
   };
 
-  const handleTimezoneChange = (option: SelectableValue<TimeZone | 'browser'> | null) => {
+  const handleTimezoneChange = (option: ComboboxOption<string> | null) => {
     onTimezoneChange((option?.value as TimeZone | 'browser') ?? 'browser');
   };
 
@@ -153,7 +154,7 @@ export const AdvancedSettingsPanel = ({
           </Field>
 
           <Field label="Timezone">
-            <Select width={32} options={timezoneOptions} value={selectedTimezone} onChange={handleTimezoneChange} />
+            <Combobox width={32} options={timezoneOptions} value={selectedTimezone} onChange={handleTimezoneChange} />
           </Field>
 
           <Field label="Rendered panel theme">
@@ -162,10 +163,10 @@ export const AdvancedSettingsPanel = ({
 
           {logoOptions && logoOptions.length > 0 && (
             <Field label="Logo" description="Pick a logo from the library for this report.">
-              <Select
+              <Combobox
                 width={32}
                 options={logoOptions}
-                value={logoOptions.find((option) => option.value === selectedLogoId) ?? null}
+                value={selectedLogoId ?? null}
                 isClearable
                 placeholder="Use global default"
                 onChange={(option) => onLogoSelect?.(option?.value ?? undefined)}

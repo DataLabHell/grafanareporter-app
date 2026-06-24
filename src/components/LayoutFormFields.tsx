@@ -18,11 +18,11 @@ import {
   Button,
   CollapsableSection,
   ColorPickerInput,
+  Combobox,
   Field,
   FieldSet,
   Input,
   RadioButtonGroup,
-  Select,
   Switch,
   useStyles2,
 } from '@grafana/ui';
@@ -126,20 +126,6 @@ const NumericInput = ({
       />
     </Field>
   );
-};
-
-const toFontOption = (value?: string) => {
-  if (!value) {
-    return undefined;
-  }
-  return fontFamilyOptions.find((option) => option.value === value) ?? { label: value, value };
-};
-
-const toFontStyleOption = (value?: string) => {
-  if (!value) {
-    return undefined;
-  }
-  return fontStyleOptions.find((option) => option.value === value) ?? { label: value, value: value as any };
 };
 
 export const LayoutFormFields = ({
@@ -260,26 +246,26 @@ export const LayoutFormFields = ({
                 label={LAYOUT_FIELD_LABELS.panelsTitleFontFamily.label}
                 description={LAYOUT_FIELD_LABELS.panelsTitleFontFamily.description}
               >
-                <Select
+                <Combobox
                   width={SELECT_WIDTH}
                   options={fontFamilyOptions}
                   placeholder={`Default (${DEFAULT_FONT_FAMILY})`}
-                  value={toFontOption(layout.panels?.title?.fontFamily)}
-                  onChange={(option) => onPanelTitleFontFamilyChange?.((option?.value as string) ?? '')}
-                  allowClear
+                  value={layout.panels?.title?.fontFamily ?? null}
+                  onChange={(option) => onPanelTitleFontFamilyChange?.(option?.value ?? '')}
+                  isClearable
                 />
               </Field>
               <Field
                 label={LAYOUT_FIELD_LABELS.panelsTitleFontStyle.label}
                 description={LAYOUT_FIELD_LABELS.panelsTitleFontStyle.description}
               >
-                <Select
+                <Combobox
                   width={SELECT_WIDTH}
                   options={fontStyleOptions}
                   placeholder="Default (normal)"
-                  value={toFontStyleOption(layout.panels?.title?.fontStyle)}
-                  onChange={(option) => onPanelTitleFontStyleChange?.(option?.value as FontStyle | undefined)}
-                  allowClear
+                  value={layout.panels?.title?.fontStyle ?? null}
+                  onChange={(option) => onPanelTitleFontStyleChange?.(option?.value)}
+                  isClearable
                 />
               </Field>
               <Field
@@ -410,26 +396,26 @@ export const LayoutFormFields = ({
                 label={LAYOUT_FIELD_LABELS.pageNumberFontFamily.label}
                 description={LAYOUT_FIELD_LABELS.pageNumberFontFamily.description}
               >
-                <Select
+                <Combobox
                   width={SELECT_WIDTH}
                   options={fontFamilyOptions}
                   placeholder={`Default (${DEFAULT_FONT_FAMILY})`}
-                  value={toFontOption(layout.pageNumber?.fontFamily)}
-                  onChange={(option) => onPageNumberFontFamilyChange?.((option?.value as string) ?? '')}
-                  allowClear
+                  value={layout.pageNumber?.fontFamily ?? null}
+                  onChange={(option) => onPageNumberFontFamilyChange?.(option?.value ?? '')}
+                  isClearable
                 />
               </Field>
               <Field
                 label={LAYOUT_FIELD_LABELS.pageNumberFontStyle.label}
                 description={LAYOUT_FIELD_LABELS.pageNumberFontStyle.description}
               >
-                <Select
+                <Combobox
                   width={SELECT_WIDTH}
                   options={fontStyleOptions}
                   placeholder="Default (normal)"
-                  value={toFontStyleOption(layout.pageNumber?.fontStyle)}
-                  onChange={(option) => onPageNumberFontStyleChange?.(option?.value as FontStyle | undefined)}
-                  allowClear
+                  value={layout.pageNumber?.fontStyle ?? null}
+                  onChange={(option) => onPageNumberFontStyleChange?.(option?.value)}
+                  isClearable
                 />
               </Field>
               <Field
@@ -503,28 +489,26 @@ export const LayoutFormFields = ({
                 label={LAYOUT_FIELD_LABELS.customTextFontFamily.label}
                 description={LAYOUT_FIELD_LABELS.customTextFontFamily.description}
               >
-                <Select
+                <Combobox
                   width={SELECT_WIDTH}
                   options={fontFamilyOptions}
                   placeholder={`Default (${DEFAULT_FONT_FAMILY})`}
-                  value={toFontOption(element.fontFamily)}
-                  onChange={(option) => onUpdateCustomElement?.(index, { fontFamily: (option?.value as string) ?? '' })}
-                  allowClear
+                  value={element.fontFamily ?? null}
+                  onChange={(option) => onUpdateCustomElement?.(index, { fontFamily: option?.value ?? '' })}
+                  isClearable
                 />
               </Field>
               <Field
                 label={LAYOUT_FIELD_LABELS.customTextFontStyle.label}
                 description={LAYOUT_FIELD_LABELS.customTextFontStyle.description}
               >
-                <Select
+                <Combobox
                   width={SELECT_WIDTH}
                   options={fontStyleOptions}
                   placeholder="Default (normal)"
-                  value={toFontStyleOption(element.fontStyle)}
-                  onChange={(option) =>
-                    onUpdateCustomElement?.(index, { fontStyle: option?.value as FontStyle | undefined })
-                  }
-                  allowClear
+                  value={element.fontStyle ?? null}
+                  onChange={(option) => onUpdateCustomElement?.(index, { fontStyle: option?.value })}
+                  isClearable
                 />
               </Field>
               <Field

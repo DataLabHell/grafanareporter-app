@@ -17,7 +17,7 @@
 import { SelectableValue, TimeRange, dateMath, dateTime } from '@grafana/data';
 import { PluginPage, config, getBackendSrv } from '@grafana/runtime';
 import { TimeZone } from '@grafana/schema';
-import { Alert, Button, Field, IconButton, Select, Spinner, useStyles2 } from '@grafana/ui';
+import { Alert, Button, Combobox, ComboboxOption, Field, IconButton, Spinner, useStyles2 } from '@grafana/ui';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { getReportStyles } from 'styles/reportStyles';
@@ -229,7 +229,7 @@ const ReportRunner = () => {
     lastAppliedQueryRef.current = currentQuery;
   }, [location.search, layoutDefaults, pluginSettings, runReport, settingsReady, applyLayoutErrors]);
 
-  const dashboardsOptions = useMemo<Array<SelectableValue<string>>>(
+  const dashboardsOptions = useMemo<Array<ComboboxOption<string>>>(
     () =>
       dashboards.map((item) => ({
         label: item.folderTitle ? `${item.folderTitle} / ${item.title}` : item.title,
@@ -244,10 +244,10 @@ const ReportRunner = () => {
     ],
     []
   );
-  const timeZoneOptions = useMemo<Array<SelectableValue<TimeZone | 'browser'>>>(() => {
-    const base: Array<SelectableValue<TimeZone | 'browser'>> = [
+  const timeZoneOptions = useMemo<Array<ComboboxOption<string>>>(() => {
+    const base: Array<ComboboxOption<string>> = [
       { label: 'Browser (local)', value: 'browser' },
-      { label: 'UTC', value: 'utc' as TimeZone },
+      { label: 'UTC', value: 'utc' },
     ];
 
     const ensureOption = (value?: TimeZone | 'browser') => {
@@ -265,18 +265,16 @@ const ReportRunner = () => {
     return base;
   }, [advancedSettings.timezone]);
 
-  const selectedDashboardOption = useMemo(
-    () => dashboardsOptions.find((option) => option.value === selectedUid) ?? null,
-    [dashboardsOptions, selectedUid]
-  );
   const disableControls = isGenerating;
   const timePickerValue = useMemo<TimeRange>(() => {
     const parsedFrom =
-      dateMath.parse(advancedSettings.range.from, false) ??
-      dateMath.parse(DEFAULT_TIME_RANGE.from, false) ??
+      dateMath.toDateTime(advancedSettings.range.from, { roundUp: false }) ??
+      dateMath.toDateTime(DEFAULT_TIME_RANGE.from, { roundUp: false }) ??
       dateTime();
     const parsedTo =
-      dateMath.parse(advancedSettings.range.to, true) ?? dateMath.parse(DEFAULT_TIME_RANGE.to, true) ?? dateTime();
+      dateMath.toDateTime(advancedSettings.range.to, { roundUp: true }) ??
+      dateMath.toDateTime(DEFAULT_TIME_RANGE.to, { roundUp: true }) ??
+      dateTime();
     return {
       from: parsedFrom,
       to: parsedTo,
@@ -295,7 +293,7 @@ const ReportRunner = () => {
   const handleTimezoneChange = (value: TimeZone | 'browser') =>
     setAdvancedSettings((prev) => ({ ...prev, timezone: value }));
   const handleThemeChange = (value: ReportTheme) => setAdvancedSettings((prev) => ({ ...prev, reportTheme: value }));
-  const logoOptions = useMemo<Array<SelectableValue<string>>>(
+  const logoOptions = useMemo<Array<ComboboxOption<string>>>(
     () => (pluginSettings.logos ?? []).map((logo) => ({ label: logo.name, value: logo.id })),
     [pluginSettings.logos]
   );
@@ -490,9 +488,9 @@ const ReportRunner = () => {
         <div className={styles.controls}>
           <div className={styles.controlGroupRow}>
             <Field className={styles.inlineField} label="Dashboard" invalid={Boolean(formError)} error={formError}>
-              <Select
+              <Combobox
                 options={dashboardsOptions}
-                value={selectedDashboardOption}
+                value={selectedUid ?? null}
                 placeholder={isFetchingDashboards ? 'Loading dashboards…' : 'Select a dashboard'}
                 disabled={disableControls || isFetchingDashboards}
                 isClearable

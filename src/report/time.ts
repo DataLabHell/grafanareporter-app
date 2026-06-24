@@ -44,7 +44,7 @@ export const convertTimeValue = (value: RawTimeRange['from'], roundUp: boolean, 
       return numeric;
     }
 
-    const parsed = dateMath.parse(value, roundUp, timeZone);
+    const parsed = dateMath.toDateTime(value, { roundUp, timezone: timeZone });
     return parsed?.valueOf();
   }
 
