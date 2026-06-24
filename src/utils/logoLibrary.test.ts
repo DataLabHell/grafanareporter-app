@@ -18,10 +18,19 @@ import {
   MAX_LOGO_BYTES,
   createLogoId,
   dataUrlByteSize,
+  deriveLogoNameFromUrl,
   formatBytes,
   isImageMimeType,
   validateLogoDataUrl,
 } from './logoLibrary';
+
+describe('deriveLogoNameFromUrl', () => {
+  it('uses the last path segment without extension or query', () => {
+    expect(deriveLogoNameFromUrl('https://example.com/assets/My-Logo.png?v=2')).toBe('My-Logo');
+    expect(deriveLogoNameFromUrl('/public/img/brand.svg')).toBe('brand');
+    expect(deriveLogoNameFromUrl('https://example.com/')).toBe('logo');
+  });
+});
 
 describe('isImageMimeType', () => {
   it('accepts image/* and rejects others', () => {

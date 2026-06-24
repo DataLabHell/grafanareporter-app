@@ -56,6 +56,14 @@ export const validateLogoDataUrl = (dataUrl: string): string | undefined => {
   return undefined;
 };
 
+/** Derives a friendly logo name from a URL's last path segment (without extension/query). */
+export const deriveLogoNameFromUrl = (url: string): string => {
+  const path = url.split('?')[0].split('#')[0];
+  const last = path.substring(path.lastIndexOf('/') + 1);
+  const name = last.replace(/\.[a-z0-9]+$/i, '').trim();
+  return name || 'logo';
+};
+
 const slugifyName = (name: string): string =>
   name
     .toLowerCase()
