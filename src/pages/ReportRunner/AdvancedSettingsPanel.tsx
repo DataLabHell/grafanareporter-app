@@ -153,7 +153,7 @@ export const AdvancedSettingsPanel = ({
           </Field>
 
           <Field label="Timezone">
-            <Select options={timezoneOptions} value={selectedTimezone} onChange={handleTimezoneChange} />
+            <Select width={32} options={timezoneOptions} value={selectedTimezone} onChange={handleTimezoneChange} />
           </Field>
 
           <Field label="Rendered panel theme">
@@ -163,6 +163,7 @@ export const AdvancedSettingsPanel = ({
           {logoOptions && logoOptions.length > 0 && (
             <Field label="Logo" description="Pick a logo from the library for this report.">
               <Select
+                width={32}
                 options={logoOptions}
                 value={logoOptions.find((option) => option.value === selectedLogoId) ?? null}
                 isClearable
