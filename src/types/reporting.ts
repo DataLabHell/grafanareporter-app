@@ -86,11 +86,24 @@ export interface PanelsLayoutSettings {
 
 export interface LogoSettings {
   enabled?: boolean;
+  /** Direct logo source: an http(s) URL or a base64 data URI (legacy / fallback path). */
   url?: string;
+  /** Id of a logo from the plugin's logo library (preferred). Kept short so it is URL-safe. */
+  id?: string;
   placement?: LayoutPlacement;
   alignment?: LayoutAlignment;
   width?: number;
   height?: number;
+}
+
+/**
+ * A logo stored in the plugin's settings (jsonData). The image lives here as a data URI so it can be
+ * referenced from reports by its short `id` instead of putting the whole base64 blob into the URL.
+ */
+export interface LogoLibraryItem {
+  id: string;
+  name: string;
+  dataUrl: string;
 }
 
 export interface PageNumberSettings {
@@ -147,6 +160,8 @@ export type ResolvedLayoutSettings = Required<LayoutSettings> & {
 export interface ReporterPluginSettings {
   themePreference?: ReportTheme;
   layout?: LayoutSettings;
+  /** Reusable logo library; reports reference an entry by `layout.logo.id`. */
+  logos?: LogoLibraryItem[];
 }
 
 export const DEFAULT_LAYOUT_SETTINGS: ResolvedLayoutSettings = {
@@ -169,6 +184,7 @@ export const DEFAULT_LAYOUT_SETTINGS: ResolvedLayoutSettings = {
   logo: {
     enabled: true,
     url: `/public/plugins/${pluginJson.id}/img/dlh-logo.svg`,
+    id: '',
     placement: 'footer',
     alignment: 'left',
     width: 120,
@@ -226,6 +242,7 @@ export const resolveLayoutSettings = (layout?: LayoutSettings | null): ResolvedL
     logo: {
       enabled: logo?.enabled ?? Boolean(logo?.url ?? DEFAULT_LAYOUT_SETTINGS.logo.url),
       url: logo?.url?.trim() || DEFAULT_LAYOUT_SETTINGS.logo.url,
+      id: logo?.id ?? DEFAULT_LAYOUT_SETTINGS.logo.id,
       placement: logo?.placement ?? DEFAULT_LAYOUT_SETTINGS.logo.placement,
       alignment: logo?.alignment ?? DEFAULT_LAYOUT_SETTINGS.logo.alignment,
       width: fallbackNumber(logo?.width, (n) => n > 0, DEFAULT_LAYOUT_SETTINGS.logo.width),

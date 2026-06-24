@@ -45,6 +45,7 @@ const PARAMS = {
   panelsWidth: 'panelsWidth',
   panelsHeight: 'panelsHeight',
   logoEnabled: 'logoEnabled',
+  logoId: 'logoId',
   logoPlacement: 'logoPlacement',
   logoAlignment: 'logoAlignment',
   logoWidth: 'logoWidth',
@@ -357,6 +358,10 @@ export const parseLayoutOverrides = (params: URLSearchParams): ParsedLayoutOverr
   if (logoEnabled === 'true' || logoEnabled === 'false') {
     layout.logo = { ...(layout.logo || {}), enabled: logoEnabled === 'true' };
   }
+  const logoId = params.get(PARAMS.logoId);
+  if (logoId) {
+    layout.logo = { ...(layout.logo || {}), id: logoId };
+  }
   if (logoPlacement === 'header' || logoPlacement === 'footer') {
     layout.logo = { ...(layout.logo || {}), placement: logoPlacement as LayoutPlacement };
   }
@@ -453,6 +458,10 @@ export const buildReportParams = (uid: string, settings: AdvancedSettingsSnapsho
   params.set(PARAMS.logoEnabled, logoEnabled ? 'true' : 'false');
 
   if (logoEnabled) {
+    // Reference the library logo by its short id; never serialize the base64 url into the link.
+    if (logo.id && isUrlSafeImageRef(logo.id)) {
+      params.set(PARAMS.logoId, logo.id);
+    }
     if (logo.placement) {
       params.set(PARAMS.logoPlacement, logo.placement);
     }
