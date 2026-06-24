@@ -309,8 +309,13 @@ export const buildDatasourceQueryPayload = (
   }
 
   // If the plugin expects rawSql/sql but only a query string is present, mirror it.
+  // Datasources disagree on the field name (Postgres/MySQL: rawSql, Trino: rawSQL, others: sql/rawQuery),
+  // so populate all of them; each plugin reads the one it knows and ignores the rest.
   if (!payload.rawSql && typeof payload.query === 'string') {
     payload.rawSql = payload.query;
+  }
+  if (!payload.rawSQL && typeof payload.query === 'string') {
+    payload.rawSQL = payload.query;
   }
   if (!payload.rawQuery && typeof payload.query === 'string') {
     payload.rawQuery = payload.query;
