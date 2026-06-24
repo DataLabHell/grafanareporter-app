@@ -82,6 +82,16 @@ describe('buildDatasourceQueryPayload', () => {
     });
   });
 
+  it('mirrors the query into rawSQL so Trino (which reads rawSQL) gets the SQL', () => {
+    const payload = buildDatasourceQueryPayload(
+      { query: 'SELECT 1' } as any,
+      'SELECT 1',
+      { uid: 'trino-uid', type: 'trino-datasource' },
+      templateSrv
+    );
+    expect(payload.rawSQL).toBe('SELECT 1');
+  });
+
   it('does not inject a string format for trino datasources', () => {
     const payload = buildDatasourceQueryPayload(
       { query: 'SELECT 1' } as any,
