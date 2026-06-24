@@ -22,7 +22,7 @@ import { ReporterPluginSettings, resolveLayoutSettings } from '../types/reportin
 import { DEFAULT_RAW_TIME_RANGE, getDashboardContext, ManualDashboardContext } from './context';
 import { getBrandingReservedHeight } from './pdf/branding';
 import { composeReportPdf, PanelImage } from './pdf/compose';
-import { loadLogoAsset } from './pdf/logo';
+import { loadLogoAsset, resolveLogoSource } from './pdf/logo';
 import { flattenPanels, getPanelRenderId, groupPanelsByRows } from './panels/flatten';
 import { getPanelTitle } from './panels/title';
 import { resolveTimeRange } from './time';
@@ -128,8 +128,9 @@ export const generateDashboardReport = async ({
   const layoutConfig = resolveLayoutSettings(settings?.layout);
   const renderWidth = layoutConfig.panels.width;
   const renderHeight = layoutConfig.panels.height;
-  const logoAsset =
-    layoutConfig.logo.enabled && layoutConfig.logo.url ? await loadLogoAsset(layoutConfig.logo.url) : undefined;
+  // A library logo selected by id resolves to its stored data URI; otherwise the direct url is used.
+  const logoSource = resolveLogoSource(layoutConfig.logo, settings?.logos);
+  const logoAsset = layoutConfig.logo.enabled && logoSource ? await loadLogoAsset(logoSource) : undefined;
   const headerHeight = getBrandingReservedHeight('header', layoutConfig, logoAsset);
   const footerHeight = getBrandingReservedHeight('footer', layoutConfig, logoAsset);
 

@@ -23,12 +23,14 @@ import { getAppConfigStyles } from 'styles/appConfigStyles';
 import {
   CustomElement,
   LayoutSettings,
+  LogoLibraryItem,
   ReporterPluginSettings,
   ResolvedLayoutSettings,
   resolveLayoutSettings,
 } from '../../types/reporting';
 import { createLayoutDraft, mergeDraftValues, validateLayoutDraft } from '../../utils/layoutValidation';
 import LayoutSettingsForm from '../LayoutSettingsForm';
+import LogoLibrary from '../LogoLibrary/LogoLibrary';
 import { testIds } from '../testIds';
 
 export interface AppConfigProps extends PluginConfigPageProps<AppPluginMeta<ReporterPluginSettings>> {}
@@ -36,8 +38,21 @@ export interface AppConfigProps extends PluginConfigPageProps<AppPluginMeta<Repo
 const AppConfig = ({ plugin }: AppConfigProps) => {
   const s = useStyles2(getAppConfigStyles);
   const layout = resolveLayoutSettings(plugin.meta.jsonData?.layout);
+  const savedLogos = plugin.meta.jsonData?.logos ?? [];
   const [state, setState] = useState<ResolvedLayoutSettings>(layout);
+  const [logos, setLogos] = useState<LogoLibraryItem[]>(savedLogos);
   const [formError, setFormError] = useState<string>();
+
+  const handleSelectDefaultLogo = (id: string | undefined) => {
+    setState((prev) => ({
+      ...prev,
+      logo: {
+        ...prev.logo,
+        id: id ?? '',
+        enabled: id ? true : prev.logo.enabled,
+      },
+    }));
+  };
 
   const areCustomElementsEqual = (a?: CustomElement[], b?: CustomElement[]) => {
     const left = a ?? [];
@@ -59,7 +74,16 @@ const AppConfig = ({ plugin }: AppConfigProps) => {
     });
   };
 
+  const areLogosEqual = (a: LogoLibraryItem[], b: LogoLibraryItem[]) =>
+    a.length === b.length &&
+    a.every((item, index) => {
+      const other = b[index];
+      return other && item.id === other.id && item.name === other.name && item.dataUrl === other.dataUrl;
+    });
+
   const isSubmitDisabled =
+    areLogosEqual(logos, savedLogos) &&
+    state.logo.id === layout.logo.id &&
     state.orientation === layout.orientation &&
     state.pageMargin === layout.pageMargin &&
     state.header.lineHeight === layout.header.lineHeight &&
@@ -119,6 +143,7 @@ const AppConfig = ({ plugin }: AppConfigProps) => {
       jsonData: {
         ...plugin.meta.jsonData,
         layout: normalizedLayout,
+        logos,
       },
     });
   };
@@ -126,6 +151,13 @@ const AppConfig = ({ plugin }: AppConfigProps) => {
   return (
     <div className={s.container}>
       <form onSubmit={onSubmit} className={s.form}>
+        <LogoLibrary
+          logos={logos}
+          selectedId={state.logo.id || undefined}
+          onChange={setLogos}
+          onSelect={handleSelectDefaultLogo}
+        />
+
         <LayoutSettingsForm
           layout={state}
           initialOpen={true}

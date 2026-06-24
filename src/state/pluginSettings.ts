@@ -27,12 +27,14 @@ const normalizeSettings = (settings?: ReporterPluginSettings | null): ReporterPl
   return {
     ...settings,
     layout: settings.layout ? { ...settings.layout } : undefined,
+    logos: settings.logos ? settings.logos.map((logo) => ({ ...logo })) : undefined,
   };
 };
 
 const mergeSettings = (...layers: Array<ReporterPluginSettings | undefined>): ReporterPluginSettings => {
   let mergedLayout: ReporterPluginSettings['layout'];
   let themePreference: ReporterPluginSettings['themePreference'];
+  let logos: ReporterPluginSettings['logos'];
 
   for (const layer of layers) {
     if (!layer) {
@@ -51,11 +53,17 @@ const mergeSettings = (...layers: Array<ReporterPluginSettings | undefined>): Re
         ...layer.layout,
       };
     }
+
+    // The logo library is replaced (not merged) by the most specific layer that defines it.
+    if (layer.logos !== undefined) {
+      logos = layer.logos;
+    }
   }
 
   return {
     themePreference,
     layout: mergedLayout ? resolveLayoutSettings(mergedLayout) : undefined,
+    logos,
   };
 };
 

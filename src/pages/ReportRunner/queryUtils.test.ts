@@ -115,6 +115,29 @@ describe('buildReportParams', () => {
     expect(layout?.orientation).toBe(DEFAULT_LAYOUT_SETTINGS.orientation);
     expect(layout?.logo?.placement).toBe(DEFAULT_LAYOUT_SETTINGS.logo.placement);
   });
+
+  it('serializes a selected library logo as a short logoId (never the data url)', () => {
+    const withLogo: AdvancedSettingsSnapshot = {
+      ...snapshot,
+      layout: { ...DEFAULT_LAYOUT_SETTINGS, logo: { ...DEFAULT_LAYOUT_SETTINGS.logo, enabled: true, id: 'brand-1' } },
+    };
+    const params = buildReportParams('abcd1234', withLogo);
+    expect(params.get('logoId')).toBe('brand-1');
+    expect(params.toString()).not.toContain('data:');
+    // and it parses back
+    expect(parseLayoutOverrides(params).layout?.logo?.id).toBe('brand-1');
+  });
+
+  it('does not emit logoId for a data: URI masquerading as an id', () => {
+    const withBadId: AdvancedSettingsSnapshot = {
+      ...snapshot,
+      layout: {
+        ...DEFAULT_LAYOUT_SETTINGS,
+        logo: { ...DEFAULT_LAYOUT_SETTINGS.logo, enabled: true, id: 'data:image/png;base64,AAAA' },
+      },
+    };
+    expect(buildReportParams('abcd1234', withBadId).get('logoId')).toBeNull();
+  });
 });
 
 describe('isUrlSafeImageRef', () => {

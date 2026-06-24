@@ -42,6 +42,9 @@ interface Props {
   themeOptions: Array<SelectableValue<ReportTheme>>;
   selectedTheme: ReportTheme;
   onThemeChange: (value: ReportTheme) => void;
+  logoOptions?: Array<SelectableValue<string>>;
+  selectedLogoId?: string;
+  onLogoSelect?: (id: string | undefined) => void;
   variablesText: string;
   onVariablesChange: (value: string) => void;
   reportUrl: string;
@@ -68,6 +71,9 @@ export const AdvancedSettingsPanel = ({
   themeOptions,
   selectedTheme,
   onThemeChange,
+  logoOptions,
+  selectedLogoId,
+  onLogoSelect,
   variablesText,
   onVariablesChange,
   reportUrl,
@@ -153,6 +159,18 @@ export const AdvancedSettingsPanel = ({
           <Field label="Rendered panel theme">
             <RadioButtonGroup options={themeOptions} value={selectedTheme} onChange={handleThemeChange} />
           </Field>
+
+          {logoOptions && logoOptions.length > 0 && (
+            <Field label="Logo" description="Pick a logo from the library for this report.">
+              <Select
+                options={logoOptions}
+                value={logoOptions.find((option) => option.value === selectedLogoId) ?? null}
+                isClearable
+                placeholder="Use global default"
+                onChange={(option) => onLogoSelect?.(option?.value ?? undefined)}
+              />
+            </Field>
+          )}
 
           <Field label="Variables" description="One per line, e.g. iterator=value1,value2">
             <TextArea

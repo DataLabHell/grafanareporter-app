@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { LogoLibraryItem } from '../../types/reporting';
 import { blobToDataUrl } from '../util/blob';
 
 export interface LogoAsset {
@@ -21,6 +22,24 @@ export interface LogoAsset {
   width: number;
   height: number;
 }
+
+/**
+ * Resolves the image source to render: a library logo selected by `id` (looked up in the logo
+ * library) takes precedence; otherwise the direct `url`/data URI is used. Falls back to `url`
+ * when the referenced id is not found, so a stale id never silently drops the logo.
+ */
+export const resolveLogoSource = (
+  logo: { id?: string; url?: string },
+  logos?: LogoLibraryItem[]
+): string | undefined => {
+  if (logo.id) {
+    const match = logos?.find((item) => item.id === logo.id);
+    if (match?.dataUrl) {
+      return match.dataUrl;
+    }
+  }
+  return logo.url || undefined;
+};
 
 export const loadLogoAsset = async (logoUrl?: string): Promise<LogoAsset | undefined> => {
   if (!logoUrl) {

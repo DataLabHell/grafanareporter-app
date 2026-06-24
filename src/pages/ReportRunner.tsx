@@ -295,6 +295,16 @@ const ReportRunner = () => {
   const handleTimezoneChange = (value: TimeZone | 'browser') =>
     setAdvancedSettings((prev) => ({ ...prev, timezone: value }));
   const handleThemeChange = (value: ReportTheme) => setAdvancedSettings((prev) => ({ ...prev, reportTheme: value }));
+  const logoOptions = useMemo<Array<SelectableValue<string>>>(
+    () => (pluginSettings.logos ?? []).map((logo) => ({ label: logo.name, value: logo.id })),
+    [pluginSettings.logos]
+  );
+  const handleLogoSelect = (id: string | undefined) => {
+    setLayoutFromForm((prev) => ({
+      ...prev,
+      logo: { ...(prev.logo || {}), id: id ?? '', enabled: id ? true : prev.logo?.enabled },
+    }));
+  };
   const handleVariablesChange = (value: string) => setAdvancedSettings((prev) => ({ ...prev, variablesText: value }));
   const setLayoutFromForm: React.Dispatch<React.SetStateAction<LayoutSettings>> = (updater) => {
     setHasLayoutOverride(true);
@@ -556,6 +566,9 @@ const ReportRunner = () => {
           themeOptions={themeOptions}
           selectedTheme={advancedSettings.reportTheme}
           onThemeChange={handleThemeChange}
+          logoOptions={logoOptions}
+          selectedLogoId={advancedSettings.layout.logo?.id || undefined}
+          onLogoSelect={handleLogoSelect}
           variablesText={advancedSettings.variablesText}
           onVariablesChange={handleVariablesChange}
           reportUrl={reportUrl}
