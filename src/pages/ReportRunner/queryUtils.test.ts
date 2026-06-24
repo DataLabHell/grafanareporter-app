@@ -22,6 +22,7 @@ import {
   convertDashboardVariablesToMap,
   coerceRawRange,
   formatVariablesText,
+  isUrlSafeImageRef,
   normalizeRawTimeInput,
   parseLayoutOverrides,
   parseVariablesText,
@@ -113,6 +114,20 @@ describe('buildReportParams', () => {
     const { layout } = parseLayoutOverrides(params);
     expect(layout?.orientation).toBe(DEFAULT_LAYOUT_SETTINGS.orientation);
     expect(layout?.logo?.placement).toBe(DEFAULT_LAYOUT_SETTINGS.logo.placement);
+  });
+});
+
+describe('isUrlSafeImageRef', () => {
+  it('accepts http(s) urls', () => {
+    expect(isUrlSafeImageRef('https://example.com/logo.png')).toBe(true);
+    expect(isUrlSafeImageRef('/public/plugins/x/img/logo.svg')).toBe(true);
+  });
+
+  it('rejects base64 data URIs and empty values (keeps them out of the URL)', () => {
+    expect(isUrlSafeImageRef('data:image/png;base64,AAAA')).toBe(false);
+    expect(isUrlSafeImageRef('  DATA:image/svg+xml,<svg/>')).toBe(false);
+    expect(isUrlSafeImageRef('')).toBe(false);
+    expect(isUrlSafeImageRef(undefined)).toBe(false);
   });
 });
 
