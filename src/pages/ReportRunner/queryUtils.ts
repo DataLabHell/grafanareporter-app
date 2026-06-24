@@ -15,6 +15,7 @@
  */
 
 import { RawTimeRange } from '@grafana/data';
+import { normalizeVariableEntries } from '../../report/variables/normalize';
 import { DashboardTemplateVariable } from '../../types/grafana';
 import {
   CustomElement,
@@ -213,69 +214,14 @@ export const convertDashboardVariablesToMap = (
       return;
     }
 
-    const values = normalizeDashboardVariableValues(variable.current?.value, variable.current?.text);
+    // Reuse the shared normalizer so dashboard/runtime/manual variable shapes are coerced identically.
+    const values = normalizeVariableEntries(variable.current?.value, variable.current?.text);
     if (values.length) {
       map[variable.name] = values;
     }
   });
 
   return Object.keys(map).length ? map : undefined;
-};
-
-export const normalizeDashboardVariableValues = (
-  value: unknown,
-  text?: unknown
-): VariableValueMap[keyof VariableValueMap] => {
-  const valueArray = Array.isArray(value) ? value : value !== undefined ? [value] : [];
-  const textArray = Array.isArray(text) ? text : text !== undefined ? [text] : [];
-  const max = Math.max(valueArray.length, textArray.length);
-  const normalized: VariableValueMap[keyof VariableValueMap] = [];
-
-  for (let i = 0; i < max; i++) {
-    let source = valueArray[i];
-    const textCandidate = textArray[i];
-
-    if (source === undefined) {
-      source = textCandidate;
-    }
-
-    if (source === undefined || source === null || source === '') {
-      continue;
-    }
-
-    if (typeof source === 'object') {
-      const candidate = source as { value?: unknown; text?: unknown };
-      if (candidate.value !== undefined && candidate.value !== null && candidate.value !== '') {
-        normalized.push({
-          value: String(candidate.value),
-          text:
-            candidate.text !== undefined && candidate.text !== null && candidate.text !== ''
-              ? String(candidate.text)
-              : textCandidate !== undefined && textCandidate !== null && textCandidate !== ''
-              ? String(textCandidate)
-              : undefined,
-        });
-        continue;
-      }
-      if (candidate.text !== undefined && candidate.text !== null && candidate.text !== '') {
-        normalized.push({
-          value: String(candidate.text),
-          text: String(candidate.text),
-        });
-        continue;
-      }
-    }
-
-    normalized.push({
-      value: String(source),
-      text:
-        textCandidate !== undefined && textCandidate !== null && textCandidate !== ''
-          ? String(textCandidate)
-          : undefined,
-    });
-  }
-
-  return normalized;
 };
 
 export const buildManualVariablesFromParams = (params: URLSearchParams): VariableValueMap | undefined => {
