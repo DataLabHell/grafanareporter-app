@@ -1,0 +1,56 @@
+/*
+ * Copyright 2025 DatalabHell
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import { dateMath, RawTimeRange } from '@grafana/data';
+import { TimeZone } from '@grafana/schema';
+
+export const resolveTimeRange = (range?: RawTimeRange, timeZone?: TimeZone) => {
+  if (!range) {
+    return undefined;
+  }
+
+  const from = convertTimeValue(range.from, false, timeZone);
+  const to = convertTimeValue(range.to, true, timeZone);
+
+  if (from === undefined || to === undefined) {
+    return undefined;
+  }
+
+  return { from, to };
+};
+
+export const convertTimeValue = (value: RawTimeRange['from'], roundUp: boolean, timeZone?: TimeZone) => {
+  if (typeof value === 'number') {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const numeric = Number(value);
+
+    if (!Number.isNaN(numeric) && value.trim() !== '') {
+      return numeric;
+    }
+
+    const parsed = dateMath.parse(value, roundUp, timeZone);
+    return parsed?.valueOf();
+  }
+
+  if (value && typeof value.valueOf === 'function') {
+    return value.valueOf();
+  }
+
+  return undefined;
+};
