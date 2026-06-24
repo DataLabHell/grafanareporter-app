@@ -134,7 +134,11 @@ report URL stays small — the base64 image is never put in the URL). There are 
 3. **Provisioning** — declare logos under `jsonData.logos` (see the example below). Entries may use a
    `dataUrl` that is a hosted URL or a base64 data URI.
 
-`layout.logo.url` (a direct URL or data URI) is still honored as a fallback when no `logo.id` is set.
+`layout.logo.url` (a direct URL or data URI) still works: it is the fallback used when no `logo.id`
+is set — a selected `id` always takes precedence. It can be set via provisioning (or persists if it was
+saved previously), but there is no longer a field for it in the configuration UI; use the library
+instead. A cross-origin `url` is fetched in the browser at report time, so it is subject to the same
+CORS requirement as URL import (use a same-origin path or a data URI to avoid it).
 
 ### Persistence
 
