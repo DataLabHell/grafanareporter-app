@@ -384,11 +384,14 @@ export const parseLayoutOverrides = (params: URLSearchParams): ParsedLayoutOverr
   };
 };
 
-export const buildReportParams = (
-  uid: string,
-  settings: AdvancedSettingsSnapshot,
-  options?: { includeLogoUrl?: boolean }
-) => {
+// A logo/image may be a base64 `data:` URI (often tens to hundreds of KB). Such values must never be
+// serialized into the shareable report URL: they blow past proxy/server URL length limits and would
+// leak the embedded image into browser history, access logs and Referer headers. Only http(s) URLs are
+// safe to put in the URL; the embedded data URI stays in plugin settings and is loaded client-side.
+export const isUrlSafeImageRef = (value?: string): value is string =>
+  typeof value === 'string' && value.trim() !== '' && !value.trim().toLowerCase().startsWith('data:');
+
+export const buildReportParams = (uid: string, settings: AdvancedSettingsSnapshot) => {
   const params = new URLSearchParams();
   params.set('uid', uid);
   const normalizedRange = coerceRawRange(settings.range);
