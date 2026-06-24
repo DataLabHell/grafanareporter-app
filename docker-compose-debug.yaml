@@ -7,6 +7,7 @@ services:
       - ./provisioning-debug/datasources/datasources.yaml:/etc/grafana/provisioning/datasources/debug-datasources.yaml:ro
       - ./provisioning-debug/provider.yaml:/etc/grafana/provisioning/dashboards/debug-provider.yaml:ro
       - ./provisioning-debug/dashboards:/etc/grafana/provisioning/dashboards-debug:ro
+      - ./provisioning-debug/plugins/apps.yaml:/etc/grafana/provisioning/plugins/apps.yaml:ro
   grafana-renderer:
     extends:
       file: ./docker-compose.yaml
