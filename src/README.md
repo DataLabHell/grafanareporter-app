@@ -150,8 +150,10 @@ apps:
             fontSize: 22
             fontColor: '#000000'
         logo:
+          # No logo ships with the plugin. Upload one in the plugin config (Logo library),
+          # or host your own asset (same origin) and point `url` at it.
           enabled: true
-          url: '/public/plugins/datalabhell-grafanareporter-app/img/dlh-logo.svg'
+          url: '/public/plugins/your-logo-host/img/your-logo.svg'
           placement: 'footer'
           alignment: 'left'
           width: 120
