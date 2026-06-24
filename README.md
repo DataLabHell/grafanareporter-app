@@ -13,7 +13,7 @@ Existing dashboard-to-PDF projects often require service accounts or bundled Chr
 ## What it does
 
 - Adds a "Reporter" app (`/a/datalabhell-grafanareporter-app`) that can be linked to from dashboards via `?uid=<dashboardUid>`.
-- Lets users tweak layout (panels per page/spacing/orientation), branding (logo + placement/alignment, page numbers), timezone, theme, and variables per report.
+- Lets users tweak layout (panels per page/spacing/orientation), branding (a logo library with per-report selection + placement/alignment, page numbers), timezone, theme, and variables per report.
 - Generates pixel-perfect PDFs by calling `/render/d-solo/...` for every panel and composing with [jsPDF](https://github.com/parallax/jsPDF).
 
 ## Status & docs
