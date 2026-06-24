@@ -50,39 +50,52 @@
     },
     {
       "datasource": {
-        "name": "-- Grafana --",
-        "type": "datasource",
-        "uid": "grafana"
+        "type": "trino-datasource",
+        "uid": "af6o83lgh0ykgc"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          }
+        },
+        "overrides": []
       },
       "gridPos": {
-        "h": 3,
-        "w": 11,
+        "h": 8,
+        "w": 12,
         "x": 0,
         "y": 1
       },
       "id": 1,
       "options": {
-        "code": {
-          "language": "plaintext",
-          "showLineNumbers": false,
-          "showMiniMap": false
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": ["sum"],
+          "show": false
         },
-        "content": "",
-        "mode": "markdown"
+        "showHeader": true
       },
-      "pluginVersion": "11.2.10",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
           "datasource": {
-            "type": "datasource",
-            "uid": "grafana"
+            "type": "trino-datasource",
+            "uid": "af6o83lgh0ykgc"
           },
-          "queryType": "randomWalk",
+          "format": 1,
+          "rawSQL": "SELECT id, name, email FROM postgres.public.users WHERE name IN (${username:singlequote}) ORDER BY id",
           "refId": "A"
         }
       ],
-      "title": "$username",
-      "type": "text"
+      "title": "User: $username",
+      "type": "table"
     }
   ],
   "schemaVersion": 39,
@@ -103,7 +116,7 @@
           "type": "trino-datasource",
           "uid": "af6o83lgh0ykgc"
         },
-        "definition": "SELECT * FROM postgres.public.users",
+        "definition": "SELECT name FROM postgres.public.users",
         "hide": 0,
         "includeAll": true,
         "label": "Username",
@@ -111,7 +124,7 @@
         "name": "username",
         "options": [],
         "query": {
-          "query": "SELECT * FROM postgres.public.users",
+          "query": "SELECT name FROM postgres.public.users",
           "refId": "StandardVariableQuery"
         },
         "refresh": 1,
@@ -130,6 +143,6 @@
   "timezone": "browser",
   "title": "Trino Variable Test",
   "uid": "af6o8wy5smdxcd",
-  "version": 7,
+  "version": 10,
   "weekStart": ""
 }
