@@ -6,6 +6,12 @@ apps:
     org_name: Main Org.
     disabled: false
     jsonData:
+      # Reusable logo library. Reference an entry from `layout.logo.id`. Each `dataUrl` may be a
+      # base64 data URI or a browser-reachable URL (same origin, or a host that sends CORS headers).
+      # logos:
+      #   - id: 'brand'
+      #     name: 'Company logo'
+      #     dataUrl: 'https://example.com/logo.svg'
       layout:
         orientation: 'portrait'
         reportTheme: 'light'
@@ -28,10 +34,11 @@ apps:
             fontSize: 22
             fontColor: '#000000'
         logo:
-          # No logo ships with the plugin. Either upload one in the plugin config (Logo library)
-          # or host your own asset (same origin, e.g. under /public/) and point `url` at it.
+          # No logo ships with the plugin. Add one to `logos` above and select it with `id: 'brand'`,
+          # or set `url` to a direct URL / data URI. Or just upload one in the plugin config UI.
           enabled: false
-          # url: '/public/plugins/<your-plugin-or-path>/img/your-logo.svg'
+          # id: 'brand'
+          # url: 'https://example.com/logo.svg'
           placement: 'footer'
           alignment: 'left'
           width: 120

@@ -63,7 +63,8 @@ The overrides are defined like: **Provisioning → Global Settings → Advanced 
 | `panelsWidth`            | Panel render width in px (controls render call).                                          | `panelsWidth=1600`                   | `3200`           |
 | `panelsHeight`           | Panel render height in px (controls render call).                                         | `panelsHeight=900`                   | `1800`           |
 | `pageMargin`             | Page margins in points.                                                                   | `pageMargin=32`                      | `32`             |
-| `logoEnabled`            | `true`/`false`. Toggle logo.                                                              | `logoEnabled=false`                  | `true`           |
+| `logoEnabled`            | `true`/`false`. Toggle logo.                                                              | `logoEnabled=false`                  | `false`          |
+| `logoId`                 | Id of a logo from the logo library (see Logos below). Short and URL-safe.                  | `logoId=brand-1`                     | -                |
 | `logoPlacement`          | `header` or `footer`. Where the logo renders.                                             | `logoPlacement=header`               | `footer`         |
 | `logoAlignment`          | `left`/`center`/`right`. Logo horizontal alignment.                                       | `logoAlignment=center`               | `left`           |
 | `logoWidth`              | Max logo width in points.                                                                 | `logoWidth=120`                      | `120`            |
@@ -83,7 +84,10 @@ The overrides are defined like: **Provisioning → Global Settings → Advanced 
 | `footerLineHeight`       | Footer text line height in points.                                                        | `footerLineHeight=12`                | `12`             |
 | `var-<name>`             | Repeat for every dashboard variable value.                                                | `var-region=us&var-region=eu`        | -                |
 | `customElements`         | Display custom elements like additional texts or images, see custom elements below.       | `custom0Type=text&custom0Content=Hi` | empty            |
-| `logoUrl`                | URL or base64 image. Configure this globally; query parameter support is not available.   |                                      | plugin setting   |
+
+The logo image itself is never put in the URL. Reports reference a logo by its short `logoId`
+(resolved from the logo library); the underlying image (`logo.url` / data URI) lives in the plugin
+settings. See **Logos** below.
 
 Custom elements
 
@@ -109,7 +113,7 @@ Custom elements are indexed (`custom0*`, `custom1*`, ...). Omit unused propertie
 The plugin configuration page (Administration → Plugins → Grafana Reporter or the cog icon in the app header) stores global defaults:
 
 - Panels per page / spacing / orientation.
-- Logo image + toggle + placement/alignment (header or footer).
+- Logo library (upload or add by URL) + toggle + placement/alignment (header or footer).
 - Panel titles toggle.
 - Page numbers toggle + placement/alignment (header or footer).
 
@@ -117,7 +121,30 @@ These defaults are applied everywhere unless overridden via the advanced setting
 
 Override order (highest priority last): provisioned defaults → global plugin settings → per-run advanced settings/query parameters.
 
-To preseed defaults in provisioning, add a file under `/etc/grafana/provisioning/plugins/`. Host logo assets inside the plugin (for example under `/public/plugins/datalabhell-grafanareporter-app/img/`) so they’re served from the same origin and can be embedded in PDFs without CORS issues:
+## Logos
+
+The plugin does **not** ship a default logo. Manage logos in the **Logo library** on the configuration
+page; each entry has a short `id`, and reports select one via the `logoId` query parameter (so the
+report URL stays small — the base64 image is never put in the URL). There are three ways to add a logo:
+
+1. **Upload** a file (PNG/JPG/SVG, up to 256 KB). It is stored as a data URI in the plugin settings.
+2. **Add by URL** — the plugin fetches the image in the browser and stores it as a data URI. Because
+   there is no backend, the download is subject to CORS: the host must send `Access-Control-Allow-Origin`.
+   If it does not, download the file and upload it instead.
+3. **Provisioning** — declare logos under `jsonData.logos` (see the example below). Entries may use a
+   `dataUrl` that is a hosted URL or a base64 data URI.
+
+`layout.logo.url` (a direct URL or data URI) is still honored as a fallback when no `logo.id` is set.
+
+### Persistence
+
+Uploaded/URL-added logos live in the plugin's `jsonData` (Grafana's database), so they **survive plugin
+and Grafana upgrades**. The exception is **provisioning**: Grafana re-applies provisioned `jsonData` on
+every startup and replaces the stored settings, so anything added through the UI that is not in the
+provisioning file is reset on restart. If you provision, make the provisioning file the source of truth
+for logos; otherwise manage them through the UI.
+
+To preseed defaults in provisioning, add a file under `/etc/grafana/provisioning/plugins/`. For logos, declare a `logos` library and select one with `layout.logo.id`. Each `dataUrl` may be a base64 data URI (fully self-contained) or a URL that is reachable from the browser (same origin, or a host that sends CORS headers). Note: you cannot drop files into the plugin's `/public/plugins/<id>/` folder without rebuilding the plugin, so prefer a data URI or an externally hosted asset.
 
 ```yaml
 apiVersion: 1
@@ -128,6 +155,11 @@ apps:
     org_name: Main Org.
     disabled: false
     jsonData:
+      logos:
+        - id: 'brand'
+          name: 'Company logo'
+          # dataUrl can be a hosted URL (browser-reachable / CORS-enabled) or a base64 data URI.
+          dataUrl: 'https://example.com/logo.svg'
       layout:
         orientation: 'portrait'
         reportTheme: 'light'
@@ -150,10 +182,10 @@ apps:
             fontSize: 22
             fontColor: '#000000'
         logo:
-          # No logo ships with the plugin. Upload one in the plugin config (Logo library),
-          # or host your own asset (same origin) and point `url` at it.
+          # Select a library logo by id (preferred). Alternatively set `url` to a direct
+          # URL/data URI instead of `id`.
           enabled: true
-          url: '/public/plugins/your-logo-host/img/your-logo.svg'
+          id: 'brand'
           placement: 'footer'
           alignment: 'left'
           width: 120
@@ -185,7 +217,6 @@ Issues and feature requests are welcome via the project repository. Contribution
 
 ## Planned features
 
-- central logo file upload and switch via url parameter so it is not getting too long
 - maybe: Possibility to reset settings to originals
 
 ## Current known issues
