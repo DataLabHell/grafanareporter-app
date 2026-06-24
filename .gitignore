@@ -45,3 +45,7 @@ ci/
 .vscode/
 
 .eslintcache
+
+# OS
+.DS_Store
+**/.DS_Store
