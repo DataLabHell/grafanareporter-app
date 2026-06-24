@@ -29,6 +29,7 @@ import {
   resolveLayoutSettings,
 } from '../../types/reporting';
 import { createLayoutDraft, mergeDraftValues, validateLayoutDraft } from '../../utils/layoutValidation';
+import { createLogoId } from '../../utils/logoLibrary';
 import LayoutSettingsForm from '../LayoutSettingsForm';
 import LogoLibrary from '../LogoLibrary/LogoLibrary';
 import { testIds } from '../testIds';
@@ -39,8 +40,25 @@ const AppConfig = ({ plugin }: AppConfigProps) => {
   const s = useStyles2(getAppConfigStyles);
   const layout = resolveLayoutSettings(plugin.meta.jsonData?.layout);
   const savedLogos = plugin.meta.jsonData?.logos ?? [];
-  const [state, setState] = useState<ResolvedLayoutSettings>(layout);
-  const [logos, setLogos] = useState<LogoLibraryItem[]>(savedLogos);
+
+  // Migration: if there's no library yet but a logo is already configured, seed the library with the
+  // current logo and select it, so the existing logo is preserved under the new library model.
+  const [bootstrap] = useState(() => {
+    if (savedLogos.length > 0) {
+      return { logos: savedLogos, logoId: layout.logo.id };
+    }
+    if (layout.logo.url) {
+      const id = createLogoId('current-logo', []);
+      return { logos: [{ id, name: 'Current logo', dataUrl: layout.logo.url }], logoId: id };
+    }
+    return { logos: savedLogos, logoId: layout.logo.id };
+  });
+
+  const [state, setState] = useState<ResolvedLayoutSettings>({
+    ...layout,
+    logo: { ...layout.logo, id: bootstrap.logoId },
+  });
+  const [logos, setLogos] = useState<LogoLibraryItem[]>(bootstrap.logos);
   const [formError, setFormError] = useState<string>();
 
   const handleSelectDefaultLogo = (id: string | undefined) => {
@@ -162,7 +180,7 @@ const AppConfig = ({ plugin }: AppConfigProps) => {
           layout={state}
           initialOpen={true}
           setLayout={setState}
-          showLogoUpload
+          showLogoUpload={false}
           logoAvailable
           dataTestIds={{
             panelsPerPage: testIds.appConfig.panelsPerPage,

@@ -301,64 +301,62 @@ export const LayoutFormFields = ({
           {logoAvailable && logoEnabled && (
             <div>
               {showLogoUpload && (
-                <>
-                  <Field label={LAYOUT_FIELD_LABELS.logo.label} description={LAYOUT_FIELD_LABELS.logo.description}>
-                    <div className={s.logoField}>
-                      <div className={s.logoRow}>
-                        <Input
-                          placeholder="https://example.com/logo.png or data:image/png;base64..."
-                          value={layout.logo?.url ?? ''}
-                          onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-                            onLogoUrlChange?.(event.currentTarget.value)
-                          }
-                        />
-                        <Button
-                          variant="secondary"
-                          type="button"
-                          icon="upload"
-                          onClick={() => fileInputRef.current?.click()}
-                        >
-                          Select image
-                        </Button>
-                        <input
-                          ref={fileInputRef}
-                          type="file"
-                          accept="image/*"
-                          style={{ display: 'none' }}
-                          onChange={(event) => onLogoFileChange?.(event.currentTarget.files?.[0] ?? null)}
-                        />
-                        {layout.logo?.url && (
-                          <Button variant="secondary" type="button" icon="times" onClick={() => onClearLogo?.()}>
-                            Clear
-                          </Button>
-                        )}
-                      </div>
+                <Field label={LAYOUT_FIELD_LABELS.logo.label} description={LAYOUT_FIELD_LABELS.logo.description}>
+                  <div className={s.logoField}>
+                    <div className={s.logoRow}>
+                      <Input
+                        placeholder="https://example.com/logo.png or data:image/png;base64..."
+                        value={layout.logo?.url ?? ''}
+                        onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                          onLogoUrlChange?.(event.currentTarget.value)
+                        }
+                      />
+                      <Button
+                        variant="secondary"
+                        type="button"
+                        icon="upload"
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        Select image
+                      </Button>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        style={{ display: 'none' }}
+                        onChange={(event) => onLogoFileChange?.(event.currentTarget.files?.[0] ?? null)}
+                      />
                       {layout.logo?.url && (
-                        <div className={s.logoPreview}>
-                          <img src={layout.logo.url} alt="Logo preview" />
-                        </div>
+                        <Button variant="secondary" type="button" icon="times" onClick={() => onClearLogo?.()}>
+                          Clear
+                        </Button>
                       )}
                     </div>
-                  </Field>
-
-                  <Field label={LAYOUT_FIELD_LABELS.logoPlacement.label}>
-                    <div>
-                      <RadioButtonGroup
-                        options={placementOptions}
-                        value={layout.logo?.placement}
-                        onChange={(value) => value && onLogoPlacementChange(value)}
-                      />
-                      <RadioButtonGroup
-                        options={alignmentOptions}
-                        value={layout.logo?.alignment}
-                        onChange={(value) => value && onLogoAlignmentChange(value)}
-                      />
-                    </div>
-                  </Field>
-                  <NumericInput field="logoWidth" values={numericValues} errors={errors} onChange={onNumericChange} />
-                  <NumericInput field="logoHeight" values={numericValues} errors={errors} onChange={onNumericChange} />
-                </>
+                    {layout.logo?.url && (
+                      <div className={s.logoPreview}>
+                        <img src={layout.logo.url} alt="Logo preview" />
+                      </div>
+                    )}
+                  </div>
+                </Field>
               )}
+
+              <Field label={LAYOUT_FIELD_LABELS.logoPlacement.label}>
+                <div>
+                  <RadioButtonGroup
+                    options={placementOptions}
+                    value={layout.logo?.placement}
+                    onChange={(value) => value && onLogoPlacementChange(value)}
+                  />
+                  <RadioButtonGroup
+                    options={alignmentOptions}
+                    value={layout.logo?.alignment}
+                    onChange={(value) => value && onLogoAlignmentChange(value)}
+                  />
+                </div>
+              </Field>
+              <NumericInput field="logoWidth" values={numericValues} errors={errors} onChange={onNumericChange} />
+              <NumericInput field="logoHeight" values={numericValues} errors={errors} onChange={onNumericChange} />
             </div>
           )}
         </FieldSet>

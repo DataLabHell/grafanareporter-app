@@ -125,7 +125,11 @@ export const LogoLibrary = ({ logos, selectedId, onChange, onSelect }: Props) =>
                         handleRename(logo.id, event.currentTarget.value)
                       }
                     />
-                    <span className={styles.size}>{formatBytes(dataUrlByteSize(logo.dataUrl))}</span>
+                    {logo.dataUrl.startsWith('data:') ? (
+                      <span className={styles.size}>{formatBytes(dataUrlByteSize(logo.dataUrl))}</span>
+                    ) : (
+                      <span className={styles.size}>External URL</span>
+                    )}
                   </div>
                   <div className={styles.itemActions}>
                     {onSelect && (
