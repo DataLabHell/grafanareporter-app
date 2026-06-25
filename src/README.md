@@ -110,6 +110,8 @@ Custom elements are indexed (`custom0*`, `custom1*`, ...). Omit unused propertie
 
 ## Configuration
 
+![Grafana Reporter configuration page, including the logo library](img/configuration.png)
+
 The plugin configuration page (Administration → Plugins → Grafana Reporter or the cog icon in the app header) stores global defaults:
 
 - Panels per page / spacing / orientation.
